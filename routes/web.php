@@ -7,7 +7,7 @@ use Inertia\Inertia;
 
 // Guest Routes
 Route::get('/', function () {
-    return Inertia::render('Guest/Welcome', [
+    return Inertia::render('Homepage', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
