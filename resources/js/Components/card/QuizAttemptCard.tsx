@@ -153,7 +153,7 @@ export default function QuizAttemptCard() {
         </>
       );
 
-    if (q.type === "true_false") {
+    if (q.type === "benar_salah") {
       const [trueText, falseText] = q.options?.map((o: any) => o.text) ?? ["True", "False"];
       return (
         <>

@@ -19,22 +19,32 @@ class QuizController extends Controller
     // =========================================================================
 
     /**
-     * Menampilkan daftar semua kuis yang dibuat oleh mentor yang sedang login.
+     * Menampilkan daftar semua kuis yang dibuat oleh mentor yang sedang login, atau semua kuis jika admin.
      */
     public function index()
     {
         $user = Auth::user();
 
-        $quizzes = Quiz::whereHas('class.mentor', function ($query) use ($user) {
-            $query->where('id', $user->id);
-        })
-            ->with('class:id,name')
-            ->withCount('questions')
-            ->orderByDesc('created_at')
-            ->get();
-
-        // ambil kelas mentor untuk dropdown modal
-        $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
+        if ($user->role === 'admin') {
+            // Admin dapat melihat semua kuis
+            $quizzes = Quiz::with('class:id,name')
+                ->withCount('questions')
+                ->orderByDesc('created_at')
+                ->get();
+            // Admin dapat melihat semua kelas untuk dropdown modal
+            $classes = ClassModel::select('id', 'name')->get();
+        } else {
+            // Mentor hanya melihat kuis miliknya
+            $quizzes = Quiz::whereHas('class.mentor', function ($query) use ($user) {
+                $query->where('id', $user->id);
+            })
+                ->with('class:id,name')
+                ->withCount('questions')
+                ->orderByDesc('created_at')
+                ->get();
+            // Mentor hanya melihat kelas miliknya
+            $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
+        }
 
         return Inertia::render('Quizzes/Quiz', [
             'quizzes' => $quizzes,
@@ -48,8 +58,13 @@ class QuizController extends Controller
     public function create()
     {
         $user = Auth::user();
-        // Hanya tampilkan kelas milik mentor yang login
-        $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
+        if ($user->role === 'admin') {
+            // Admin dapat melihat semua kelas
+            $classes = ClassModel::select('id', 'name')->get();
+        } else {
+            // Mentor hanya melihat kelas miliknya
+            $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
+        }
 
         return Inertia::render('Quizzes/QuizBuilder', [
             'classes' => $classes,
@@ -64,7 +79,18 @@ class QuizController extends Controller
     {
         $user = Auth::user();
 
-        // Validasi, pastikan class_id yang dipilih adalah milik mentor
+        // Validasi, pastikan class_id yang dipilih adalah milik mentor atau admin dapat memilih semua
+        $classRule = [
+            'required',
+            'uuid',
+            Rule::exists('classes', 'id'),
+        ];
+        if ($user->role !== 'admin') {
+            $classRule[] = Rule::exists('classes', 'id')->where(function ($query) use ($user) {
+                $query->where('mentor_id', $user->id);
+            });
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -73,16 +99,10 @@ class QuizController extends Controller
             'time_limit_minutes' => 'required|integer|min:1',
             'status' => 'required|string|in:Draf,Diterbitkan',
             'attempts_allowed' => 'required|integer|min:1',
-            'class_id' => [
-                'required',
-                'uuid',
-                Rule::exists('classes', 'id')->where(function ($query) use ($user) {
-                    $query->where('mentor_id', $user->id);
-                }),
-            ],
+            'class_id' => $classRule,
             'questions' => 'present|array|min:1',
             'questions.*.question_text' => 'required|string',
-            'questions.*.type' => 'required|string|in:pilihan_ganda,true_false,esai',
+            'questions.*.type' => 'required|string|in:pilihan_ganda,benar_salah,esai',
             'questions.*.options' => 'present|array',
             'questions.*.options.*.text' => ['exclude_if:questions.*.type,esai', 'required', 'string'],
             'questions.*.options.*.is_correct' => ['exclude_if:questions.*.type,esai', 'required', 'boolean'],
@@ -103,11 +123,14 @@ class QuizController extends Controller
     }
 
     /**
-     * Menampilkan detail kuis (untuk preview mentor).
+     * Menampilkan detail kuis (untuk preview mentor atau admin).
      */
     public function show(Quiz $quiz)
     {
-        $this->authorizeMentorAction($quiz);
+        $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $this->authorizeMentorAction($quiz);
+        }
 
         $quiz->load(['questions', 'class:id,name'])->loadCount('questions');
 
@@ -132,8 +155,10 @@ class QuizController extends Controller
 
     public function edit(Quiz $quiz)
     {
-        $this->authorizeMentorAction($quiz);
         $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $this->authorizeMentorAction($quiz);
+        }
 
         $quiz->load(['questions', 'class:id,name'])->loadCount('questions');
 
@@ -149,7 +174,11 @@ class QuizController extends Controller
             return $question;
         });
 
-        $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
+        if ($user->role === 'admin') {
+            $classes = ClassModel::select('id', 'name')->get();
+        } else {
+            $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
+        }
 
         return Inertia::render('Quizzes/QuizBuilder', [
             'quiz' => $quiz,
@@ -162,8 +191,22 @@ class QuizController extends Controller
      */
     public function update(Request $request, Quiz $quiz)
     {
-        $this->authorizeMentorAction($quiz); // Keamanan
         $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $this->authorizeMentorAction($quiz); // Keamanan
+        }
+
+        // Validasi, pastikan class_id yang dipilih adalah milik mentor atau admin dapat memilih semua
+        $classRule = [
+            'required',
+            'uuid',
+            Rule::exists('classes', 'id'),
+        ];
+        if ($user->role !== 'admin') {
+            $classRule[] = Rule::exists('classes', 'id')->where(function ($query) use ($user) {
+                $query->where('mentor_id', $user->id);
+            });
+        }
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -173,16 +216,10 @@ class QuizController extends Controller
             'time_limit_minutes' => 'required|integer|min:1',
             'status' => 'required|string|in:Draf,Diterbitkan',
             'attempts_allowed' => 'required|integer|min:1',
-            'class_id' => [
-                'required',
-                'uuid',
-                Rule::exists('classes', 'id')->where(function ($query) use ($user) {
-                    $query->where('mentor_id', $user->id);
-                }),
-            ],
+            'class_id' => $classRule,
             'questions' => 'present|array|min:1',
             'questions.*.question_text' => 'required|string',
-            'questions.*.type' => 'required|string|in:pilihan_ganda,true_false,esai',
+            'questions.*.type' => 'required|string|in:pilihan_ganda,benar_salah,esai',
             'questions.*.options' => 'present|array',
             'questions.*.options.*.text' => ['exclude_if:questions.*.type,esai', 'required', 'string'],
             'questions.*.options.*.is_correct' => ['exclude_if:questions.*.type,esai', 'required', 'boolean'],
@@ -208,14 +245,20 @@ class QuizController extends Controller
      */
     public function destroy(Quiz $quiz)
     {
-        $this->authorizeMentorAction($quiz); // Keamanan
+        $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $this->authorizeMentorAction($quiz); // Keamanan
+        }
         $quiz->delete();
         return redirect()->route('quizzes.index')->with('success', 'Quiz berhasil dihapus');
     }
 
     public function data(Quiz $quiz)
     {
-        $this->authorizeMentorAction($quiz);
+        $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $this->authorizeMentorAction($quiz);
+        }
         $quiz->load(['class:id,name', 'questions']);
         foreach ($quiz->questions as $question) {
             if (is_string($question->options)) {

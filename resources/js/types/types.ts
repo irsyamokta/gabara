@@ -190,7 +190,7 @@ export interface QuizInfoPageProps extends InertiaPageProps {
     questions?: {
       id: string;
       question_text: string;
-      type?: "pilihan_ganda" | "true_false" | "esai";
+      type?: "pilihan_ganda" | "benar_salah" | "esai";
       options?: {
         text: string;
         is_correct: boolean;

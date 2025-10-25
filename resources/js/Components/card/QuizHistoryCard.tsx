@@ -209,7 +209,7 @@ export default function QuizHistory() {
                                     </>
                                   ) : (
                                     <div className="mt-2 text-sm text-gray-500">
-                                      <em>esai — tidak dievaluasi otomatis.</em>
+                                      <em>Esai — tidak dievaluasi otomatis.</em>
                                     </div>
                                   )}
                                 </div>

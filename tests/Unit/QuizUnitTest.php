@@ -246,7 +246,7 @@ class QuizUnitTest extends TestCase
 
         $question2 = Question::factory()->create([
             'quiz_id' => $quiz->id,
-            'type' => 'true_false',
+            'type' => 'benar_salah',
             'options' => [
                 ['text' => 'True', 'is_correct' => true],
                 ['text' => 'False', 'is_correct' => false],

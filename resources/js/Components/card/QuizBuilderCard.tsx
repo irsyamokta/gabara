@@ -63,7 +63,7 @@ function SelectInline({
 }
 
 /* Types */
-type QuestionType = "pilihan_ganda" | "true_false" | "esai";
+type QuestionType = "pilihan_ganda" | "benar_salah" | "esai";
 type OptionLocal = { id?: number | string; text: string; is_correct?: boolean };
 type QuestionLocal = {
   id: number;
@@ -293,7 +293,7 @@ export default function QuizBuilderCard({ classes = [], quiz, mode }: Props) {
           text: o.text ?? "",
           is_correct: !!o.is_correct,
         }));
-      else if (q.type === "true_false") {
+      else if (q.type === "benar_salah") {
         const opts = q.options ?? [];
         payload.options =
           opts.length >= 2
@@ -315,7 +315,7 @@ export default function QuizBuilderCard({ classes = [], quiz, mode }: Props) {
     if (!form.data.title?.trim()) return false;
     for (const q of questions) {
       if (!q.question_text?.trim()) return false;
-      if (["pilihan_ganda", "true_false"].includes(q.type)) {
+      if (["pilihan_ganda", "benar_salah"].includes(q.type)) {
         if (!q.options || q.options.length < 2) return false;
         if (!q.options.some((o) => !!o.is_correct)) return false;
       }
@@ -336,10 +336,10 @@ export default function QuizBuilderCard({ classes = [], quiz, mode }: Props) {
   const renderOptionsEditor = (q: QuestionLocal) => {
     if (q.type === "esai")
       return (
-        <div className="text-sm text-gray-500">esai — tidak ada opsi.</div>
+        <div className="text-sm text-gray-500">Esai — tidak ada opsi.</div>
       );
 
-    if (q.type === "true_false") {
+    if (q.type === "benar_salah") {
       const currentTrue =
         (q.options && q.options[0] && !!q.options[0].is_correct) ?? false;
       const name = `tf_${q.id}`;
@@ -417,257 +417,260 @@ export default function QuizBuilderCard({ classes = [], quiz, mode }: Props) {
           ]}
         />
       </div>
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white border rounded-lg p-6 space-y-6"
-    >
-      {/* Header */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Judul Quiz
-            </label>
-            <InputField
-              value={form.data.title}
-              onChange={(e: any) =>
-                form.setData("title", e.target.value)
-              }
-              placeholder="Masukkan judul quiz"
-            />
-            {form.errors.title && (
-              <div className="text-red-500 text-sm">
-                {form.errors.title}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Deskripsi
-            </label>
-            <TextArea
-              value={form.data.description}
-              onChange={(e: any) =>
-                form.setData("description", e.target.value)
-              }
-              placeholder="Deskripsi"
-            />
-            {form.errors.description && (
-              <div className="text-red-500 text-sm">
-                {form.errors.description}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Kelas</label>
-            <SelectInline
-              value={String(form.data.class_id ?? "")}
-              onChange={(val) => form.setData("class_id", val)}
-              options={[
-                { value: "", label: "Pilih kelas" },
-                ...classes.map((c) => ({
-                  value: String(c.id),
-                  label: c.name,
-                })),
-              ]}
-            />
-            {form.errors.class_id && (
-              <div className="text-red-500 text-sm">
-                {form.errors.class_id}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <DatePicker
-              id="open_datetime"
-              label="Dibuka"
-              mode="single"
-              value={form.data.open_datetime}
-              onChange={(dateStr) =>
-                form.setData("open_datetime", dateStr)
-              }
-              placeholder="Pilih tanggal mulai"
-            />
-            {form.errors.open_datetime && (
-              <div className="text-red-500 text-sm">
-                {form.errors.open_datetime}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <DatePicker
-              id="close_datetime"
-              label="Ditutup"
-              mode="single"
-              value={form.data.close_datetime}
-              onChange={(dateStr) =>
-                form.setData("close_datetime", dateStr)
-              }
-              placeholder="Pilih tanggal tutup"
-            />
-            {form.errors.close_datetime && (
-              <div className="text-red-500 text-sm">
-                {form.errors.close_datetime}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Durasi (menit)
-            </label>
-            <InputField
-              type="number"
-              value={String(form.data.time_limit_minutes ?? 0)}
-              onChange={(e: any) =>
-                form.setData(
-                  "time_limit_minutes",
-                  Number(e.target.value)
-                )
-              }
-            />
-            {form.errors.time_limit_minutes && (
-              <div className="text-red-500 text-sm">
-                {form.errors.time_limit_minutes}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
-            <SelectInline
-              value={form.data.status ?? "Draf"}
-              onChange={(v) => form.setData("status", v)}
-              options={[
-                { value: "Draf", label: "Draf" },
-                { value: "Diterbitkan", label: "Diterbitkan" },
-              ]}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Kesempatan Mengerjakan
-            </label>
-            <InputField
-              type="number"
-              value={String(form.data.attempts_allowed ?? 1)}
-              onChange={(e: any) =>
-                form.setData(
-                  "attempts_allowed",
-                  Number(e.target.value)
-                )
-              }
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Questions */}
-      <div className="space-y-4">
-        {questions.map((q, idx) => (
-          <div key={q.id} className="border rounded-lg overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 bg-gray-50 border-b">
-              {/* Bagian kiri */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
-                <div className="text-lg font-semibold text-gray-800">
-                  Pertanyaan {idx + 1}
-                </div>
-
-                <SelectInline
-                  value={q.type}
-                  onChange={(val) =>
-                    updateQuestion(q.id, {
-                      type: val as QuestionType,
-                      options:
-                        val === "pilihan_ganda"
-                          ? q.options && q.options.length
-                            ? q.options
-                            : [
-                              { text: "" },
-                              { text: "" },
-                            ]
-                          : val === "true_false"
-                            ? [
-                              { text: "benar", is_correct: false },
-                              { text: "salah", is_correct: true },
-                            ]
-                            : [],
-                    })
-                  }
-                  options={[
-                    { value: "pilihan_ganda", label: "Pilihan Ganda" },
-                    { value: "true_false", label: "Benar/Salah" },
-                    { value: "esai", label: "esai" },
-                  ]}
-                  className="sm:w-48 w-full"
-                />
-              </div>
-
-              {/* Tombol hapus di bawah di mobile, kanan di desktop */}
-              <button
-                type="button"
-                onClick={() => removeQuestion(q.id)}
-                className="text-sm text-red-600 hover:text-red-700 sm:self-auto self-end"
-              >
-                Hapus
-              </button>
-            </div>
-
-
-            <div className="p-4 space-y-3">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white border rounded-lg p-6 space-y-6"
+      >
+        {/* Header */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-3">
+            <div>
               <label className="block text-sm font-medium mb-1">
-                Pertanyaan
+                Judul Quiz
               </label>
               <InputField
-                value={q.question_text}
+                value={form.data.title}
                 onChange={(e: any) =>
-                  updateQuestion(q.id, { question_text: e.target.value })
+                  form.setData("title", e.target.value)
                 }
+                placeholder="Masukkan judul quiz"
               />
+              {form.errors.title && (
+                <div className="text-red-500 text-sm">
+                  {form.errors.title}
+                </div>
+              )}
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Opsi / Jawaban
-                </label>
-                {renderOptionsEditor(q)}
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Deskripsi
+              </label>
+              <TextArea
+                value={form.data.description}
+                disabled={false}
+                onChange={(e: any) =>
+                  form.setData("description", e.target.value)
+                }
+                placeholder="Deskripsi"
+              />
+              {form.errors.description && (
+                <div className="text-red-500 text-sm">
+                  {form.errors.description}
+                </div>
+              )}
             </div>
           </div>
-        ))}
 
-        <button
-          type="button"
-          onClick={() => addQuestion()}
-          className="text-sm text-blue-600"
-        >
-          + Tambah Pertanyaan
-        </button>
-      </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Kelas</label>
+              <SelectInline
+                value={String(form.data.class_id ?? "")}
+                onChange={(val) => form.setData("class_id", val)}
+                options={[
+                  { value: "", label: "Pilih kelas" },
+                  ...classes.map((c) => ({
+                    value: String(c.id),
+                    label: c.name,
+                  })),
+                ]}
+              />
+              {form.errors.class_id && (
+                <div className="text-red-500 text-sm">
+                  {form.errors.class_id}
+                </div>
+              )}
+            </div>
 
-      <div className="flex items-center justify-end gap-3">
-        <Button
-          type="button"
-          onClick={() => (window.location.href = route("quizzes.index"))}
-          variant="default"
-        >
-          Batal
-        </Button>
-        <Button type="submit" disabled={form.processing || !isValid}>
-          {form.processing
-            ? "Menyimpan..."
-            : quiz
-              ? "Simpan Perubahan"
-              : "Simpan Quiz"}
-        </Button>
-      </div>
-    </form>
+            <div>
+              <DatePicker
+                id="open_datetime"
+                label="Dibuka"
+                mode="single"
+                value={form.data.open_datetime}
+                onChange={(dateStr) =>
+                  form.setData("open_datetime", dateStr)
+                }
+                placeholder="Pilih tanggal mulai"
+              />
+              {form.errors.open_datetime && (
+                <div className="text-red-500 text-sm">
+                  {form.errors.open_datetime}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <DatePicker
+                id="close_datetime"
+                label="Ditutup"
+                mode="single"
+                value={form.data.close_datetime}
+                onChange={(dateStr) =>
+                  form.setData("close_datetime", dateStr)
+                }
+                placeholder="Pilih tanggal tutup"
+              />
+              {form.errors.close_datetime && (
+                <div className="text-red-500 text-sm">
+                  {form.errors.close_datetime}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Durasi (menit)
+              </label>
+              <InputField
+                type="number"
+                min={1} // batas bawah
+                value={String(form.data.time_limit_minutes ?? 1)}
+                onChange={(e: any) =>
+                  form.setData(
+                    "time_limit_minutes",
+                    Math.max(1, Number(e.target.value)) // pastikan minimal 1
+                  )
+                }
+              />
+              {form.errors.time_limit_minutes && (
+                <div className="text-red-500 text-sm">
+                  {form.errors.time_limit_minutes}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Status</label>
+              <SelectInline
+                value={form.data.status ?? "Draf"}
+                onChange={(v) => form.setData("status", v)}
+                options={[
+                  { value: "Draf", label: "Draf" },
+                  { value: "Diterbitkan", label: "Diterbitkan" },
+                ]}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Kesempatan Mengerjakan
+              </label>
+              <InputField
+                type="number"
+                min={1} // batas bawah
+                value={String(form.data.attempts_allowed ?? 1)}
+                onChange={(e: any) =>
+                  form.setData(
+                    "attempts_allowed",
+                    Math.max(1, Number(e.target.value)) // pastikan minimal 1
+                  )
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Questions */}
+        <div className="space-y-4">
+          {questions.map((q, idx) => (
+            <div key={q.id} className="border rounded-lg overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 bg-gray-50 border-b">
+                {/* Bagian kiri */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
+                  <div className="text-lg font-semibold text-gray-800">
+                    Pertanyaan {idx + 1}
+                  </div>
+
+                  <SelectInline
+                    value={q.type}
+                    onChange={(val) =>
+                      updateQuestion(q.id, {
+                        type: val as QuestionType,
+                        options:
+                          val === "pilihan_ganda"
+                            ? q.options && q.options.length
+                              ? q.options
+                              : [
+                                { text: "" },
+                                { text: "" },
+                              ]
+                            : val === "benar_salah"
+                              ? [
+                                { text: "benar", is_correct: false },
+                                { text: "salah", is_correct: true },
+                              ]
+                              : [],
+                      })
+                    }
+                    options={[
+                      { value: "pilihan_ganda", label: "Pilihan Ganda" },
+                      { value: "benar_salah", label: "Benar/Salah" },
+                      { value: "esai", label: "Esai" },
+                    ]}
+                    className="sm:w-48 w-full"
+                  />
+                </div>
+
+                {/* Tombol hapus di bawah di mobile, kanan di desktop */}
+                <button
+                  type="button"
+                  onClick={() => removeQuestion(q.id)}
+                  className="text-sm text-red-600 hover:text-red-700 sm:self-auto self-end"
+                >
+                  Hapus
+                </button>
+              </div>
+
+
+              <div className="p-4 space-y-3">
+                <label className="block text-sm font-medium mb-1">
+                  Pertanyaan
+                </label>
+                <InputField
+                  value={q.question_text}
+                  onChange={(e: any) =>
+                    updateQuestion(q.id, { question_text: e.target.value })
+                  }
+                />
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Opsi / Jawaban
+                  </label>
+                  {renderOptionsEditor(q)}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => addQuestion()}
+            className="text-sm text-blue-600"
+          >
+            + Tambah Pertanyaan
+          </button>
+        </div>
+
+        <div className="flex items-center justify-end gap-3">
+          <Button
+            type="button"
+            onClick={() => (window.location.href = route("quizzes.index"))}
+            variant="default"
+          >
+            Batal
+          </Button>
+          <Button type="submit" disabled={form.processing || !isValid}>
+            {form.processing
+              ? "Menyimpan..."
+              : quiz
+                ? "Simpan Perubahan"
+                : "Simpan Quiz"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

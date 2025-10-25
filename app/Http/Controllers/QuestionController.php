@@ -28,7 +28,7 @@ class QuestionController extends Controller
 
         $data = $request->validate([
             'question_text' => 'required|string',
-            'type'          => 'required|in:pilihan_ganda,true_false,esai',
+            'type'          => 'required|in:pilihan_ganda,benar_salah,esai',
             'options'       => 'nullable|array',
             'options.*.text'       => 'nullable|string',
             'options.*.is_correct' => 'nullable|boolean',
@@ -55,7 +55,7 @@ class QuestionController extends Controller
         // validasi input
         $data = $request->validate([
             'question_text' => 'required|string',
-            'type'          => 'required|in:pilihan_ganda,true_false,esai',
+            'type'          => 'required|in:pilihan_ganda,benar_salah,esai',
             'options'       => 'nullable|array',
             'options.*.text'       => 'nullable|string',
             'options.*.is_correct' => 'nullable|boolean',

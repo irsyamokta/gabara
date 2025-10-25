@@ -9,7 +9,7 @@ import DatePicker from "../form/date-picker";
 import { Modal } from "../ui/modal";
 import Label from "../form/Label";
 
-type QuestionType = "pilihan_ganda" | "true_false" | "esai";
+type QuestionType = "pilihan_ganda" | "benar_salah" | "esai";
 type OptionLocal = { id?: string; text: string; is_correct?: boolean };
 type QuestionLocal = { id: string; question_text: string; type: QuestionType; options?: OptionLocal[]; image?: File | null };
 type PayloadOption = { text: string; is_correct: boolean };
@@ -34,16 +34,32 @@ interface Props {
   isOpen?: boolean;
 }
 
+function normalizeOptions(input: any): OptionLocal[] {
+  if (!input) return [];
+  if (typeof input === "string") {
+    try {
+      const parsed = JSON.parse(input || "[]");
+      if (Array.isArray(parsed)) return parsed.map((o: any) => ({ text: o.text ?? "", is_correct: !!o.is_correct }));
+      return [];
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(input)) return input.map((o: any) => ({ text: o.text ?? "", is_correct: !!o.is_correct }));
+  return [];
+}
+
 export default function QuizBuilderModal({ quiz = null, onClose, classes = [], isOpen = true }: Props) {
-  const [questions, setQuestions] = useState<QuestionLocal[]>(() => {
+  // prepare initial local questions array from quiz (if any)
+  const initialLocalQuestions: QuestionLocal[] = (() => {
     const safeQuestions = Array.isArray(quiz?.questions)
       ? quiz.questions.map((q: any) => ({
-          ...q,
-          options: typeof q.options === "string" ? JSON.parse(q.options || "[]") : q.options,
-        }))
+        ...q,
+        options: normalizeOptions(q.options),
+      }))
       : [];
 
-    if (!safeQuestions.length) {
+    if (safeQuestions.length === 0) {
       return [
         {
           id: crypto.randomUUID(),
@@ -65,11 +81,34 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
         Array.isArray(q.options) && q.options.length > 0
           ? q.options.map((o: any) => ({ text: o.text ?? "", is_correct: !!o.is_correct }))
           : [
-              { text: "", is_correct: true },
-              { text: "", is_correct: false },
-            ],
+            { text: "", is_correct: true },
+            { text: "", is_correct: false },
+          ],
     }));
-  });
+  })();
+
+  const [questions, setQuestions] = useState<QuestionLocal[]>(initialLocalQuestions);
+
+  // build initial payload questions to seed form
+  const buildPayloadQuestions = (qs: QuestionLocal[]): PayloadQuestion[] =>
+    qs.map((q) => {
+      let optionsPayload: PayloadOption[] = [];
+      if (q.type === "pilihan_ganda") {
+        optionsPayload = (q.options ?? []).map((o) => ({ text: o.text ?? "", is_correct: !!o.is_correct }));
+      } else if (q.type === "benar_salah") {
+        const trueIsCorrect =
+          q.options?.find((o) => (o.text ?? "").toLowerCase() === "true")?.is_correct ?? q.options?.[0]?.is_correct ?? false;
+        optionsPayload = [
+          { text: "true", is_correct: !!trueIsCorrect },
+          { text: "false", is_correct: !trueIsCorrect },
+        ];
+      } else {
+        optionsPayload = [];
+      }
+      return { question_text: q.question_text ?? "", type: q.type, options: optionsPayload };
+    });
+
+  const initialQuestionsPayload = buildPayloadQuestions(initialLocalQuestions);
 
   const form = useForm<QuizFormData>({
     title: quiz?.title ?? "",
@@ -80,28 +119,13 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
     status: quiz?.status ?? "Draf",
     attempts_allowed: quiz?.attempts_allowed ?? 1,
     class_id: quiz?.class_id ?? (classes?.[0]?.id ?? ""),
-    questions: [],
+    questions: initialQuestionsPayload,
   });
 
-  // Sync questions ke payload
-  const buildPayloadQuestions = (): PayloadQuestion[] =>
-    questions.map((q) => {
-      let optionsPayload: PayloadOption[] = [];
-      if (q.type === "pilihan_ganda") {
-        optionsPayload = (q.options ?? []).map((o) => ({ text: o.text, is_correct: !!o.is_correct }));
-      } else if (q.type === "true_false") {
-        const trueIsCorrect =
-          q.options?.find((o) => (o.text ?? "").toLowerCase() === "true")?.is_correct ?? q.options?.[0]?.is_correct ?? false;
-        optionsPayload = [
-          { text: "true", is_correct: !!trueIsCorrect },
-          { text: "false", is_correct: !trueIsCorrect },
-        ];
-      }
-      return { question_text: q.question_text, type: q.type, options: optionsPayload };
-    });
-
+  // keep form.questions in sync whenever local questions change
   useEffect(() => {
-    form.setData("questions", buildPayloadQuestions());
+    form.setData("questions", buildPayloadQuestions(questions));
+    // ensure default class selected if none
     if (!form.data.class_id && classes.length > 0) form.setData("class_id", classes[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions, classes]);
@@ -157,15 +181,24 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
     e.preventDefault();
     if (!isValid) return;
 
-    form.setData("questions", buildPayloadQuestions());
+    // ensure form has latest questions payload
+    form.setData("questions", buildPayloadQuestions(questions));
 
-    if (quiz?.id) form.patch(route("quizzes.update", quiz.id), { onSuccess: () => onClose() });
-    else form.post(route("quizzes.store"), { onSuccess: () => onClose() });
+    // Use patch for editing (no new resource), post for creating
+    if (quiz?.id) {
+      form.patch(route("quizzes.update", quiz.id), {
+        onSuccess: () => onClose(),
+      });
+    } else {
+      form.post(route("quizzes.store"), {
+        onSuccess: () => onClose(),
+      });
+    }
   };
 
   const renderOptionsEditor = (q: QuestionLocal) => {
-    if (q.type === "esai") return <div className="text-sm text-gray-500">esai — tidak ada opsi.</div>;
-    if (q.type === "true_false") {
+    if (q.type === "esai") return <div className="text-sm text-gray-500">Esai — tidak ada opsi.</div>;
+    if (q.type === "benar_salah") {
       const trueIsCorrect = q.options?.find((opt) => (opt.text ?? "").toLowerCase() === "true")?.is_correct ?? (q.options?.[0]?.is_correct ?? false);
       const name = `tf_${q.id}`;
       return (
@@ -187,6 +220,19 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
       </div>
     );
   };
+
+  // Helper: ubah UTC ke waktu lokal agar flatpickr tidak tampil mundur 1 hari
+  function normalizeDateForPicker(value?: string) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return "";
+    // kompensasi perbedaan zona waktu (dalam ms)
+    const offset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - offset);
+    // format sesuai kebutuhan date picker (Y-m-d)
+    return localDate.toISOString().split("T")[0];
+  }
+
 
   return (
     <Modal isOpen={!!isOpen} onClose={onClose} className="max-w-[330px] 2xsm:max-w-[350px] md:max-w-[1100px] m-4">
@@ -217,12 +263,34 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
                 </select>
               </div>
 
-              <DatePicker id="open_datetime" label="Dibuka" value={form.data.open_datetime} onChange={(val) => form.setData("open_datetime", val)} placeholder="Pilih tanggal buka" />
-              <DatePicker id="close_datetime" label="Ditutup" value={form.data.close_datetime} onChange={(val) => form.setData("close_datetime", val)} placeholder="Pilih tanggal tutup" />
+              <DatePicker
+                id="open_datetime"
+                label="Dibuka"
+                value={normalizeDateForPicker(form.data.open_datetime)}
+                onChange={(val) => form.setData("open_datetime", val)}
+                placeholder="Pilih tanggal buka"
+              />
+              <DatePicker
+                id="close_datetime"
+                label="Ditutup"
+                value={normalizeDateForPicker(form.data.close_datetime)}
+                onChange={(val) => form.setData("close_datetime", val)}
+                placeholder="Pilih tanggal tutup"
+              />
 
               <div className="space-y-1.5">
                 <Label htmlFor="time_limit_minutes">Durasi (menit)</Label>
-                <InputField type="number" value={String(form.data.time_limit_minutes)} onChange={(e) => form.setData("time_limit_minutes", Number(e.target.value))} />
+                <InputField
+                  type="number"
+                  min={1} // batas bawah
+                  value={String(form.data.time_limit_minutes)}
+                  onChange={(e) =>
+                    form.setData(
+                      "time_limit_minutes",
+                      Math.max(1, Number(e.target.value)) // pastikan tidak kurang dari 1
+                    )
+                  }
+                />
               </div>
 
               <div>
@@ -233,10 +301,19 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
                 </select>
               </div>
 
-              
               <div className="space-y-1.5">
                 <Label>Kesempatan Mengerjakan</Label>
-                <InputField type="number" value={String(form.data.attempts_allowed ?? 1)} onChange={(e) => form.setData("attempts_allowed", Number(e.target.value))} />
+                <InputField
+                  type="number"
+                  min={1} // batas bawah
+                  value={String(form.data.attempts_allowed ?? 1)}
+                  onChange={(e) =>
+                    form.setData(
+                      "attempts_allowed",
+                      Math.max(1, Number(e.target.value)) // pastikan tidak kurang dari 1
+                    )
+                  }
+                />
               </div>
             </div>
           </div>
@@ -250,13 +327,22 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
                     <div className="text-lg font-semibold">Pertanyaan {idx + 1}</div>
                     <select value={q.type} onChange={(e) => updateQuestion(q.id, { type: e.target.value as QuestionType })} className="border rounded px-2 py-1 text-sm">
                       <option value="pilihan_ganda">Pilihan Ganda</option>
-                      <option value="true_false">Benar / Salah</option>
-                      <option value="esai">esai</option>
+                      <option value="benar_salah">Benar / Salah</option>
+                      <option value="esai">Esai</option>
                     </select>
                   </div>
                   <button type="button" onClick={() => removeQuestion(q.id)} className="text-red-500 px-3">Hapus</button>
                 </div>
-                <div className="p-4 space-y-3">{renderOptionsEditor(q)}</div>
+
+                <div className="p-4 space-y-3">
+                  <label className="block text-sm font-medium mb-1">Pertanyaan</label>
+                  <InputField value={q.question_text} onChange={(e) => updateQuestion(q.id, { question_text: e.target.value })} placeholder="Teks Pertanyaan" />
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Opsi / Jawaban</label>
+                    {renderOptionsEditor(q)}
+                  </div>
+                </div>
               </div>
             ))}
             <button type="button" onClick={addQuestion} className="text-sm text-blue-600">+ Tambah Pertanyaan</button>

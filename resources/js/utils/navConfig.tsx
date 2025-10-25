@@ -7,7 +7,7 @@ export const navConfig: Record<string, any[]> = {
         { icon: <LuLayoutDashboard />, name: "Dashboard", path: "/dashboard" },
         { icon: <LuUserRound />, name: "User", path: "/users" },
         { icon: <MdOutlineClass />, name: "Kelas", path: "/classes" },
-        { icon: <MdOutlineQuiz />, name: "Kuis", path: "/quiz" },
+        { icon: <MdOutlineQuiz />, name: "Kuis", path: "/quizzes" },
         { icon: <GrAnnounce />, name: "Pengumuman", path: "/announcements" },
     ],
     mentor: [

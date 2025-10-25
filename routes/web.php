@@ -139,7 +139,7 @@ Route::prefix('quizzes')->middleware('role:mentor|admin')->group(function () {
     Route::get('/{quiz}/edit', [QuizController::class, 'edit'])->name('quizzes.edit');
     Route::patch('/{quiz}', [QuizController::class, 'update'])->name('quizzes.update');
     Route::get('/{quiz}', [QuizController::class, 'show'])->whereUuid('quiz')->name('quizzes.show');
-    Route::get('/quizzes/{quiz}/data', [QuizController::class, 'data'])->name('quizzes.data');
+    Route::get('/quizzes/{quiz}/data', [QuizController::class, 'data'])->name('quizzes.data'); //KHUSUS FETCHING DATA API QUESTIONS + OPTIONS PADA QUIZBUILDER!!!
 
 
     Route::delete('/{quiz}', [QuizController::class, 'destroy'])->name('quizzes.destroy');

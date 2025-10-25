@@ -76,9 +76,10 @@ export default function QuizCard() {
     <div className="relative grid grid-cols-1 gap-4 md:gap-6">
       <HeaderSection
         title="Kuis"
-        buttonLabel={role === "mentor" ? "Buat" : undefined}
-        onButtonClick={role === "mentor" ? handleCreate : undefined}
+        buttonLabel={role === "mentor" || role === "admin" ? "Buat" : undefined}
+        onButtonClick={role === "mentor" || role === "admin" ? handleCreate : undefined}
       />
+
 
       {quizzes.length === 0 && (
         <EmptyState
@@ -121,7 +122,7 @@ export default function QuizCard() {
               </p>
             </div>
 
-            {role === "mentor" && (
+            {(role === "mentor" || role === "admin") && (
               <div
                 className="p-4 flex gap-2 mt-auto"
                 onClick={(e) => e.stopPropagation()}
@@ -150,6 +151,7 @@ export default function QuizCard() {
                 </Button>
               </div>
             )}
+
           </div>
         ))}
       </div>
