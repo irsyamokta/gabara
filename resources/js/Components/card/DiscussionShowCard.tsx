@@ -20,12 +20,14 @@ const ReplyItem = memo(function ReplyItem({
   onNestedSubmit,
   canReply,
   level = 0,
+  usernames = [],
 }: {
   reply: any;
   currentUser: any;
   onNestedSubmit: (parentId: string, text: string) => Promise<void>;
   canReply: boolean;
   level?: number;
+  usernames?: string[];
 }) {
   const [openReply, setOpenReply] = useState(false);
   const [value, setValue] = useState("");
@@ -53,7 +55,7 @@ const ReplyItem = memo(function ReplyItem({
 
   const renderReplyHtml = (rawHtml: string | undefined) => {
     const safe = rawHtml ?? "";
-    const withMentions = linkifyMentions(safe);
+    const withMentions = linkifyMentions(safe, usernames);
     return { __html: withMentions };
   };
 
@@ -105,6 +107,7 @@ const ReplyItem = memo(function ReplyItem({
                 onNestedSubmit={onNestedSubmit}
                 canReply={canReply}
                 level={level + 1}
+                usernames={usernames}
               />
             ))}
           </ul>
@@ -138,6 +141,23 @@ export default function DiscussionShow() {
   const isOpener = openerId === user?.id;
   const isMentorOrAdmin = user?.role === "mentor" || user?.role === "admin";
   const isOpen = discussion.status === "open";
+
+  // Extract all usernames from enrolled students and mentor
+  const usernames: string[] = [];
+  if (classData.enrollments) {
+    classData.enrollments.forEach((enrollment: any) => {
+      if (enrollment.student?.name) {
+        usernames.push(enrollment.student.name);
+      }
+    });
+  }
+  if (classData.mentor?.name) {
+    usernames.push(classData.mentor.name);
+  }
+  // Add discussion opener if not already included
+  if (discussion.opener_student?.name && !usernames.includes(discussion.opener_student.name)) {
+    usernames.push(discussion.opener_student.name);
+  }
 
   // top-level reply
   const { data, setData, post, processing } = useForm<{ reply_text: string }>({ reply_text: "" });
@@ -259,7 +279,7 @@ export default function DiscussionShow() {
           {discussion.discussion_replies && discussion.discussion_replies.length > 0 ? (
             <ul className="mt-4 space-y-4">
               {discussion.discussion_replies.map((r: any) => (
-                <ReplyItem key={r.id} reply={r} currentUser={user} onNestedSubmit={onNestedSubmit} canReply={isOpen} />
+                <ReplyItem key={r.id} reply={r} currentUser={user} onNestedSubmit={onNestedSubmit} canReply={isOpen} usernames={usernames} />
               ))}
             </ul>
           ) : (

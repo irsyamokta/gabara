@@ -1,61 +1,113 @@
 // resources/js/utils/mentions.ts
 // Helper untuk linkify mentions di HTML string (memproses text nodes saja)
-export default function linkifyMentions(html: string) {
-  if (!html) return "";
+export default function linkifyMentions(
+    html: string,
+    usernames: string[] = [],
+) {
+    if (!html) return "";
+    if (!usernames || usernames.length === 0) return html;
 
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
 
-    // walk only text nodes so we don't break existing tags
-    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
-    const textNodes: Text[] = [];
-    while (walker.nextNode()) {
-      textNodes.push(walker.currentNode as Text);
-    }
-
-    const mentionRegex = /@([a-zA-Z0-9_]+)/g;
-
-    textNodes.forEach((textNode) => {
-      const text = textNode.nodeValue || "";
-      let lastIndex = 0;
-      let match: RegExpExecArray | null;
-
-      const frag = doc.createDocumentFragment();
-      mentionRegex.lastIndex = 0;
-
-      while ((match = mentionRegex.exec(text)) !== null) {
-        const idx = match.index;
-        const handle = match[1];
-
-        if (idx > lastIndex) {
-          frag.appendChild(doc.createTextNode(text.slice(lastIndex, idx)));
+        // walk only text nodes so we don't break existing tags
+        const walker = doc.createTreeWalker(
+            doc.body,
+            NodeFilter.SHOW_TEXT,
+            null,
+        );
+        const textNodes: Text[] = [];
+        while (walker.nextNode()) {
+            textNodes.push(walker.currentNode as Text);
         }
 
-        const a = doc.createElement("a");
-        // arahkan ke user profile (sesuaikan route kalau perlu)
-        a.setAttribute("href", `/users/${encodeURIComponent(handle)}`);
-        a.setAttribute("target", "_blank");
-        a.setAttribute("rel", "noopener noreferrer");
-        a.className = "mention text-primary font-medium hover:underline";
-        a.textContent = `@${handle}`;
+        textNodes.forEach((textNode) => {
+            const text = textNode.nodeValue || "";
+            const frag = doc.createDocumentFragment();
+            let lastIndex = 0;
+            let hasMatch = false;
 
-        frag.appendChild(a);
-        lastIndex = idx + match[0].length;
-      }
+            // Sort usernames by length (longest first) to match longer names first
+            const sortedUsernames = [...usernames].sort(
+                (a, b) => b.length - a.length,
+            );
 
-      if (lastIndex < text.length) {
-        frag.appendChild(doc.createTextNode(text.slice(lastIndex)));
-      }
+            // Find all mentions in the text
+            const mentions: Array<{
+                index: number;
+                length: number;
+                username: string;
+            }> = [];
 
-      if (frag.childNodes.length > 0) {
-        textNode.parentNode?.replaceChild(frag, textNode);
-      }
-    });
+            sortedUsernames.forEach((username) => {
+                // Escape special regex characters in username
+                const escapedUsername = username.replace(
+                    /[.*+?^${}()|[\]\\]/g,
+                    "\\$&",
+                );
+                // Match @username with word boundaries
+                const regex = new RegExp(
+                    `@${escapedUsername}(?=\\s|$|[.,!?;:])`,
+                    "gi",
+                );
+                let match;
 
-    return doc.body.innerHTML;
-  } catch (err) {
-    // fallback kalau DOMParser gagal
-    return html;
-  }
+                while ((match = regex.exec(text)) !== null) {
+                    // Check if this position is already covered by another mention
+                    const overlaps = mentions.some(
+                        (m) =>
+                            (match!.index >= m.index &&
+                                match!.index < m.index + m.length) ||
+                            (match!.index + match![0].length > m.index &&
+                                match!.index + match![0].length <=
+                                    m.index + m.length),
+                    );
+
+                    if (!overlaps) {
+                        mentions.push({
+                            index: match.index,
+                            length: match[0].length,
+                            username: username,
+                        });
+                    }
+                }
+            });
+
+            // Sort mentions by index
+            mentions.sort((a, b) => a.index - b.index);
+
+            // Build the fragment with mentions replaced
+            mentions.forEach((mention) => {
+                if (mention.index > lastIndex) {
+                    frag.appendChild(
+                        doc.createTextNode(
+                            text.slice(lastIndex, mention.index),
+                        ),
+                    );
+                }
+
+                const span = doc.createElement("span");
+                span.className = "mention text-blue-600 font-medium";
+                span.textContent = `@${mention.username}`;
+
+                frag.appendChild(span);
+                lastIndex = mention.index + mention.length;
+                hasMatch = true;
+            });
+
+            if (lastIndex < text.length) {
+                frag.appendChild(doc.createTextNode(text.slice(lastIndex)));
+            }
+
+            if (hasMatch && frag.childNodes.length > 0) {
+                textNode.parentNode?.replaceChild(frag, textNode);
+            }
+        });
+
+        return doc.body.innerHTML;
+    } catch (err) {
+        // fallback kalau DOMParser gagal
+        return html;
+    }
 }
