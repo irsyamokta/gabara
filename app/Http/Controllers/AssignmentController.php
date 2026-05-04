@@ -10,10 +10,10 @@ use Inertia\Inertia;
 
 class AssignmentController extends Controller
 {
-    public function show($id)
+    public function show($classId, $assignmentId)
     {
         $assignment = Assignment::with(['meeting.class', 'submissions.student'])
-            ->findOrFail($id);
+            ->findOrFail($assignmentId);
 
         $user = auth()->user();
 
@@ -77,9 +77,15 @@ class AssignmentController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy($classId, $assignmentId)
     {
-        $assignment = Assignment::findOrFail($id);
+        $assignment = Assignment::findOrFail($assignmentId);
+
+        // Optional: Ensure the assignment belongs to the class
+        if ($assignment->meeting->class_id !== $classId) {
+            abort(404);
+        }
+
         $assignment->delete();
 
         return redirect()->back()->with('success', 'Tugas berhasil dihapus.');

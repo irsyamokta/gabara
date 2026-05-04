@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { router, usePage } from "@inertiajs/react";
 import { confirmDialog } from "@/utils/confirmationDialog";
-import { toast } from "react-toastify";
+
 
 import {
     Table,
@@ -60,11 +60,9 @@ export default function UserTable() {
         router.delete(route("users.destroy", id), {
             preserveScroll: true,
             onSuccess: () => {
-                toast.success("User berhasil dihapus");
                 setDeletingId(null);
             },
             onError: () => {
-                toast.error("Gagal menghapus user");
                 setDeletingId(null);
             },
         });

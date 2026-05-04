@@ -96,27 +96,34 @@ export default function AssignmentDetailCard() {
         }
 
         if (studentSubmission && studentSubmission.id) {
+            formData.append('_method', 'PATCH');
             router.post(
-                route("submissions.update", studentSubmission.id),
+                route("submissions.update", { class: assignment.class_id, assignment: assignment.id, submission: studentSubmission.id }),
                 formData,
                 {
                     forceFormData: true,
                     onSuccess: () => {
+                        // Keep modal open until finish
+                    },
+                    onFinish: () => {
+                        setLoading(false);
                         closeModal();
                     },
-                    onFinish: () => setLoading(false),
                 }
             );
         } else {
             router.post(
-                route("submissions.store", assignment.id),
+                route("submissions.store", { class: assignment.class_id, assignment: assignment.id }),
                 formData,
                 {
                     forceFormData: true,
                     onSuccess: () => {
+                        // Keep modal open until finish
+                    },
+                    onFinish: () => {
+                        setLoading(false);
                         closeModal();
                     },
-                    onFinish: () => setLoading(false),
                 }
             );
         }
@@ -128,7 +135,7 @@ export default function AssignmentDetailCard() {
 
         if (selectedSubmission && grade !== "") {
             router.post(
-                route("submissions.updateGrade", selectedSubmission.id),
+                route("submissions.updateGrade", { class: assignment.class_id, assignment: assignment.id, submission: selectedSubmission.id }),
                 { grade, feedback },
                 {
                     onSuccess: () => {
@@ -201,7 +208,7 @@ export default function AssignmentDetailCard() {
         });
 
         if (confirmed) {
-            router.delete(route("submissions.destroy", studentSubmission.id));
+            router.delete(route("submissions.destroy", { class: assignment.class_id, assignment: assignment.id, submission: studentSubmission.id }));
         }
     }, [studentSubmission]);
 

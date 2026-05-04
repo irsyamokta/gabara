@@ -94,8 +94,10 @@ class QuizController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'open_datetime' => 'nullable|date',
-            'close_datetime' => 'nullable|date|after_or_equal:open_datetime',
+            'date_open' => 'nullable|date',
+            'time_open' => 'nullable|date_format:H:i',
+            'date_close' => 'nullable|date',
+            'time_close' => 'nullable|date_format:H:i',
             'time_limit_minutes' => 'required|integer|min:1',
             'status' => 'required|string|in:Draf,Diterbitkan',
             'attempts_allowed' => 'required|integer|min:1',
@@ -108,8 +110,33 @@ class QuizController extends Controller
             'questions.*.options.*.is_correct' => ['exclude_if:questions.*.type,esai', 'required', 'boolean'],
         ]);
 
-        DB::transaction(function () use ($validated) {
-            $quiz = Quiz::create(collect($validated)->except('questions')->toArray());
+        // Gabung date dan time menjadi datetime untuk database
+        $openDatetime = null;
+        $closeDatetime = null;
+
+        if ($validated['date_open'] && $validated['time_open']) {
+            $openDatetime = $validated['date_open'] . ' ' . $validated['time_open'] . ':00';
+        } elseif ($validated['date_open']) {
+            $openDatetime = $validated['date_open'] . ' 00:00:00';
+        }
+
+        if ($validated['date_close'] && $validated['time_close']) {
+            $closeDatetime = $validated['date_close'] . ' ' . $validated['time_close'] . ':00';
+        } elseif ($validated['date_close']) {
+            $closeDatetime = $validated['date_close'] . ' 23:59:59';
+        }
+
+        // Validasi bahwa close datetime setelah open datetime jika keduanya ada
+        if ($openDatetime && $closeDatetime && strtotime($closeDatetime) <= strtotime($openDatetime)) {
+            return back()->withErrors(['date_close' => 'Tanggal dan waktu tutup harus setelah tanggal dan waktu buka.']);
+        }
+
+        $quizData = collect($validated)->except(['questions', 'date_open', 'time_open', 'date_close', 'time_close'])->toArray();
+        $quizData['open_datetime'] = $openDatetime;
+        $quizData['close_datetime'] = $closeDatetime;
+
+        DB::transaction(function () use ($quizData, $validated) {
+            $quiz = Quiz::create($quizData);
             foreach ($validated['questions'] ?? [] as $questionData) {
                 $quiz->questions()->create([
                     'question_text' => $questionData['question_text'],
@@ -174,6 +201,26 @@ class QuizController extends Controller
             return $question;
         });
 
+        // Split datetime menjadi date dan time untuk frontend
+        $quizData = $quiz->toArray();
+        if ($quiz->open_datetime) {
+            $openDateTime = \Carbon\Carbon::parse($quiz->open_datetime);
+            $quizData['date_open'] = $openDateTime->format('Y-m-d');
+            $quizData['time_open'] = $openDateTime->format('H:i');
+        } else {
+            $quizData['date_open'] = '';
+            $quizData['time_open'] = '00:00';
+        }
+
+        if ($quiz->close_datetime) {
+            $closeDateTime = \Carbon\Carbon::parse($quiz->close_datetime);
+            $quizData['date_close'] = $closeDateTime->format('Y-m-d');
+            $quizData['time_close'] = $closeDateTime->format('H:i');
+        } else {
+            $quizData['date_close'] = '';
+            $quizData['time_close'] = '00:00';
+        }
+
         if ($user->role === 'admin') {
             $classes = ClassModel::select('id', 'name')->get();
         } else {
@@ -181,7 +228,7 @@ class QuizController extends Controller
         }
 
         return Inertia::render('Quizzes/QuizBuilder', [
-            'quiz' => $quiz,
+            'quiz' => $quizData,
             'classes' => $classes,
         ]);
     }
@@ -211,8 +258,10 @@ class QuizController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'open_datetime' => 'nullable|date',
-            'close_datetime' => 'nullable|date|after_or_equal:open_datetime',
+            'date_open' => 'nullable|date',
+            'time_open' => 'nullable|date_format:H:i',
+            'date_close' => 'nullable|date',
+            'time_close' => 'nullable|date_format:H:i',
             'time_limit_minutes' => 'required|integer|min:1',
             'status' => 'required|string|in:Draf,Diterbitkan',
             'attempts_allowed' => 'required|integer|min:1',
@@ -225,8 +274,33 @@ class QuizController extends Controller
             'questions.*.options.*.is_correct' => ['exclude_if:questions.*.type,esai', 'required', 'boolean'],
         ]);
 
-        DB::transaction(function () use ($quiz, $validated) {
-            $quiz->update(collect($validated)->except('questions')->toArray());
+        // Gabung date dan time menjadi datetime untuk database
+        $openDatetime = null;
+        $closeDatetime = null;
+
+        if ($validated['date_open'] && $validated['time_open']) {
+            $openDatetime = $validated['date_open'] . ' ' . $validated['time_open'] . ':00';
+        } elseif ($validated['date_open']) {
+            $openDatetime = $validated['date_open'] . ' 00:00:00';
+        }
+
+        if ($validated['date_close'] && $validated['time_close']) {
+            $closeDatetime = $validated['date_close'] . ' ' . $validated['time_close'] . ':00';
+        } elseif ($validated['date_close']) {
+            $closeDatetime = $validated['date_close'] . ' 23:59:59';
+        }
+
+        // Validasi bahwa close datetime setelah open datetime jika keduanya ada
+        if ($openDatetime && $closeDatetime && strtotime($closeDatetime) <= strtotime($openDatetime)) {
+            return back()->withErrors(['date_close' => 'Tanggal dan waktu tutup harus setelah tanggal dan waktu buka.']);
+        }
+
+        $quizData = collect($validated)->except(['questions', 'date_open', 'time_open', 'date_close', 'time_close'])->toArray();
+        $quizData['open_datetime'] = $openDatetime;
+        $quizData['close_datetime'] = $closeDatetime;
+
+        DB::transaction(function () use ($quiz, $quizData, $validated) {
+            $quiz->update($quizData);
             $quiz->questions()->delete();
             foreach ($validated['questions'] ?? [] as $questionData) {
                 $quiz->questions()->create([
@@ -266,7 +340,28 @@ class QuizController extends Controller
                 $question->options = is_array($decoded) ? $decoded : [];
             }
         }
-        return response()->json($quiz);
+
+        // Split datetime menjadi date dan time untuk frontend
+        $quizData = $quiz->toArray();
+        if ($quiz->open_datetime) {
+            $openDateTime = \Carbon\Carbon::parse($quiz->open_datetime);
+            $quizData['date_open'] = $openDateTime->format('Y-m-d');
+            $quizData['time_open'] = $openDateTime->format('H:i');
+        } else {
+            $quizData['date_open'] = '';
+            $quizData['time_open'] = '00:00';
+        }
+
+        if ($quiz->close_datetime) {
+            $closeDateTime = \Carbon\Carbon::parse($quiz->close_datetime);
+            $quizData['date_close'] = $closeDateTime->format('Y-m-d');
+            $quizData['time_close'] = $closeDateTime->format('H:i');
+        } else {
+            $quizData['date_close'] = '';
+            $quizData['time_close'] = '00:00';
+        }
+
+        return response()->json($quizData);
     }
 
     // =========================================================================

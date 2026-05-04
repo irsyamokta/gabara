@@ -12,6 +12,7 @@ import { PageProps, Deadline, Announcement } from "@/types/types";
 
 import { PiUsersThreeBold, PiBookOpenBold, PiChalkboardTeacherBold } from "react-icons/pi";
 import { MdOutlineAssignmentTurnedIn } from "react-icons/md";
+import { FaClipboardList } from "react-icons/fa";
 
 export default function DashboardCard() {
     const { props } = usePage<PageProps>();
@@ -58,8 +59,15 @@ export default function DashboardCard() {
             ) : (
                 <ul className="space-y-1">
                     {items.map((item) => (
-                        <li key={item.id} className="flex justify-between text-sm">
-                            <span>{item.title}</span>
+                        <li key={item.id} className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                                {item.type === 'quiz' ? (
+                                    <FaClipboardList className="text-blue-500 size-4" />
+                                ) : (
+                                    <MdOutlineAssignmentTurnedIn className="text-green-500 size-4" />
+                                )}
+                                <span>{item.title}</span>
+                            </div>
                             <span className="text-gray-500">{formatDateTime(item.deadline)}</span>
                         </li>
                     ))}

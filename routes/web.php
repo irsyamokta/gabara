@@ -102,6 +102,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('{class}/assignments')->group(function () {
             Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('assignments.show');
 
+            Route::middleware('role:admin|mentor')->group(function () {
+                Route::delete('/{assignment}', [AssignmentController::class, 'destroy'])->name('assignments.destroy');
+            });
+
             Route::middleware('role:student')->group(function () {
                 Route::post('/{assignment}/submissions', [SubmissionController::class, 'store'])->name('submissions.store');
                 Route::patch('/{assignment}/submissions/{submission}', [SubmissionController::class, 'update'])->name('submissions.update');

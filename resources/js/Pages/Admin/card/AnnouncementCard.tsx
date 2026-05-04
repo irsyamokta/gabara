@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { router, usePage } from "@inertiajs/react";
-import { toast } from "react-toastify";
 
 import { ModalAnnouncement } from "../modal/ModalAnnouncement";
 import Button from "@/Components/ui/button/Button";
@@ -41,11 +40,11 @@ export default function AnnouncementCard() {
         router.delete(route("announcements.destroy", id), {
             preserveScroll: true,
             onSuccess: () => {
-                // toast.success("Pengumuman berhasil dihapus");
+            
                 setDeletingId(null);
             },
             onError: () => {
-                // toast.error("Gagal menghapus pengumuman");
+             
                 setDeletingId(null);
             },
         });

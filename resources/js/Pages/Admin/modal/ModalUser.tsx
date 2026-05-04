@@ -11,7 +11,6 @@ import Select from "@/Components/form/Select";
 import Label from "@/Components/form/Label";
 
 import { AiOutlineLoading3Quarters, AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
-import { toast } from "react-toastify";
 
 interface ModalUserProps {
     isOpen: boolean;
@@ -104,7 +103,6 @@ export const ModalUser = ({ isOpen, onClose, user }: ModalUserProps) => {
         router.post(isEditing ? route("users.update", user.id) : route("users.store"), formData, {
             forceFormData: true,
             onSuccess: () => {
-                toast.success(isEditing ? "Pengguna berhasil diperbarui" : "Pengguna berhasil ditambahkan");
                 reset();
                 setImagePreview(null);
                 setLoading(false);

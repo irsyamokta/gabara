@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class SubmissionController extends Controller
 {
-    public function store(Request $request, $assignmentId)
+    public function store(Request $request, $classId, $assignmentId)
     {
         $request->validate(
             [
@@ -62,7 +62,7 @@ class SubmissionController extends Controller
         }
     }
 
-    public function update(Request $request, $submissionId)
+    public function update(Request $request, $classId, $assignmentId, $submissionId)
     {
         $submission = Submission::where('id', $submissionId)
             ->where('student_id', auth()->id())
@@ -101,6 +101,11 @@ class SubmissionController extends Controller
                     'public_id' => $publicId,
                     'submitted_at' => now(),
                 ]);
+            } else {
+                // If no file is uploaded, just update the submitted_at timestamp
+                $submission->update([
+                    'submitted_at' => now(),
+                ]);
             }
 
             DB::commit();
@@ -112,7 +117,7 @@ class SubmissionController extends Controller
         }
     }
 
-    public function destroy($submissionId)
+    public function destroy($classId, $assignmentId, $submissionId)
     {
         $submission = Submission::where('id', $submissionId)
             ->where('student_id', auth()->id())
@@ -136,7 +141,7 @@ class SubmissionController extends Controller
         }
     }
 
-    public function updateGrade(Request $request, $submissionId)
+    public function updateGrade(Request $request, $classId, $assignmentId, $submissionId)
     {
         $request->validate([
             'grade' => 'required|numeric|min:0|max:100',

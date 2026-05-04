@@ -10,6 +10,7 @@ use App\Models\Enrollment;
 use App\Models\User;
 use App\Models\Announcement;
 use App\Models\Assignment;
+use App\Models\Quiz;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -156,7 +157,7 @@ class DashboardController extends Controller
 
     private function getStudentDeadlines($studentId)
     {
-        return Assignment::select([
+        $assignments = Assignment::select([
             'id',
             'title',
             'date_close',
@@ -179,8 +180,37 @@ class DashboardController extends Controller
                     'title' => $assignment->title,
                     'deadline' => Carbon::parse($assignment->date_close)
                         ->setTimeFromTimeString($assignment->time_close),
+                    'type' => 'assignment',
                 ];
-            })->toArray();
+            });
+
+        $quizzes = Quiz::select([
+            'id',
+            'title',
+            'close_datetime',
+            'class_id',
+        ])
+            ->whereHas('class.enrollments', function ($q) use ($studentId) {
+                $q->where('student_id', $studentId);
+            })
+            ->where('close_datetime', '>', now())
+            ->whereDoesntHave('quizAttempts', function ($q) use ($studentId) {
+                $q->where('student_id', $studentId);
+            })
+            ->orderBy('close_datetime')
+            ->get()
+            ->map(function ($quiz) {
+                return [
+                    'id' => $quiz->id,
+                    'title' => $quiz->title,
+                    'deadline' => $quiz->close_datetime,
+                    'type' => 'quiz',
+                ];
+            });
+
+        $deadlines = $assignments->concat($quizzes)->sortBy('deadline')->values();
+
+        return $deadlines->toArray();
     }
 
     private function calculateStudentProgress($studentId)

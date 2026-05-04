@@ -17,15 +17,7 @@ const GradesTab: React.FC = () => {
         );
     }
 
-    interface QuizWithAttempt {
-        id: string;
-        title: string;
-        attempts?: {
-            student_id: string;
-            score?: number;
-            status?: 'in_progress' | 'finished';
-        }[];
-    }
+    // Removed interface QuizWithAttempt as we now use proper Quiz type
 
 
     const allAssignments = classData.meetings.flatMap(meeting => meeting.assignments);
@@ -87,54 +79,82 @@ const GradesTab: React.FC = () => {
     // ==================== QUIZ GRADES ====================
     const allQuizzes = classData.quizzes || [];
     const quizGrades: Grade[] = isStudent
-        ? (allQuizzes as QuizWithAttempt[]).map((quiz) => {
-            const attempt = quiz.attempts?.[0];
-            return {
-                item: quiz.title || `Kuis ${quiz.id}`,
-                score: attempt?.score,
+        ? allQuizzes.flatMap((quiz) => {
+            const studentAttempts = (quiz.attempts || []).filter(attempt =>
+                attempt.student_id === auth.user.id && attempt.status === 'finished'
+            );
+            return studentAttempts.map((attempt, index) => ({
+                item: `${quiz.title || `Kuis ${quiz.id}`} (Attempt ${index + 1})`,
+                score: attempt.score,
                 feedback: '-',
-                status: attempt
-                    ? attempt.status === 'finished'
-                        ? 'Selesai'
-                        : 'In Progress'
-                    : 'Belum Mengerjakan',
-            };
+                status: 'Selesai',
+            }));
         })
-        : (allQuizzes as QuizWithAttempt[]).flatMap((quiz) =>
-            enrolledStudents.map((student) => {
-                const attempt = quiz.attempts?.find(a => a.student_id === student.id);
-                return {
-                    item: quiz.title || `Kuis ${quiz.id}`,
+        : allQuizzes.flatMap((quiz) => {
+            return enrolledStudents.flatMap((student) => {
+                const studentAttempts = (quiz.attempts || []).filter(attempt =>
+                    attempt.student_id === student.id && attempt.status === 'finished'
+                );
+                return studentAttempts.map((attempt, index) => ({
+                    item: `${quiz.title || `Kuis ${quiz.id}`} (${index + 1})`,
                     student_name: student.name || 'Unknown',
-                    score: attempt?.score,
+                    score: attempt.score,
                     feedback: '-',
-                    status: attempt
-                        ? attempt.status === 'finished'
-                            ? 'Selesai'
-                            : 'In Progress'
-                        : 'Belum Mengerjakan',
-                };
-            })
-        );
+                    status: 'Selesai',
+                }));
+            });
+        });
 
 
     const grades = [...assignmentGrades, ...quizGrades];
 
     // ==================== CHART DATA ====================
+    let assignmentAverage: number;
+    let quizAverage: number;
+
+    if (isStudent) {
+        // For students: calculate average from their own submissions and attempts
+        const studentAssignmentScores = allSubmissions
+            .filter(s => s.student_id === auth.user.id)
+            .map(s => s.grade)
+            .filter(grade => grade !== undefined && grade !== null);
+        assignmentAverage = studentAssignmentScores.length > 0
+            ? parseFloat((studentAssignmentScores.reduce((sum, grade) => sum + grade, 0) / studentAssignmentScores.length).toFixed(2))
+            : 0;
+
+        const studentQuizScores = allQuizzes.flatMap(quiz =>
+            (quiz.attempts || [])
+                .filter(attempt => attempt.student_id === auth.user.id && attempt.status === 'finished' && attempt.score !== undefined && attempt.score !== null)
+                .map(attempt => attempt.score!)
+        );
+        quizAverage = studentQuizScores.length > 0
+            ? parseFloat((studentQuizScores.reduce((sum, score) => sum + score, 0) / studentQuizScores.length).toFixed(2))
+            : 0;
+    } else {
+        // For mentors/admins: calculate class-wide averages
+        const assignmentScores = allSubmissions
+            .map(s => s.grade)
+            .filter(grade => grade !== undefined && grade !== null);
+        assignmentAverage = assignmentScores.length > 0
+            ? parseFloat((assignmentScores.reduce((sum, grade) => sum + grade, 0) / assignmentScores.length).toFixed(2))
+            : 0;
+
+        const studentIds = enrolledStudents.map(student => student.id);
+        const quizScores = allQuizzes.flatMap(quiz =>
+            (quiz.attempts || [])
+                .filter(attempt => attempt.status === 'finished' && attempt.score !== undefined && attempt.score !== null && studentIds.includes(attempt.student_id))
+                .map(attempt => attempt.score!)
+        );
+        quizAverage = quizScores.length > 0
+            ? parseFloat((quizScores.reduce((sum, score) => sum + score, 0) / quizScores.length).toFixed(2))
+            : 0;
+    }
+
     const chartData: ChartData = {
         series: [
             {
                 name: 'Rata-rata Nilai',
-                data: [
-                    grades
-                        .filter(g => g.item.startsWith('Tugas') && g.score !== undefined)
-                        .reduce((sum, g) => sum + (g.score || 0), 0) /
-                    (grades.filter(g => g.item.startsWith('Tugas') && g.score !== undefined).length || 1) || 0,
-                    grades
-                        .filter(g => g.item.startsWith('Kuis') && g.score !== undefined)
-                        .reduce((sum, g) => sum + (g.score || 0), 0) /
-                    (grades.filter(g => g.item.startsWith('Kuis') && g.score !== undefined).length || 1) || 0,
-                ],
+                data: [assignmentAverage, quizAverage],
             },
         ],
         categories: ['Tugas', 'Kuis'],
@@ -219,6 +239,13 @@ const GradesTab: React.FC = () => {
                         options={{
                             chart: { type: 'bar' },
                             xaxis: { categories: chartData.categories },
+                            yaxis: {
+                                labels: {
+                                    formatter: function (value: number) {
+                                        return value.toFixed(2);
+                                    }
+                                }
+                            },
                             colors: ['#F97316', '#D946EF'],
                             legend: { position: 'bottom' },
                             responsive: [{ breakpoint: 480, options: { chart: { width: '100%' } } }],

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Head, useForm } from "@inertiajs/react";
 import { Link } from "@inertiajs/react";
-import { toast } from "react-toastify";
 import { AiOutlineLoading3Quarters, AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import Label from "@/Components/form/Label";
 import Input from "@/Components/form/input/InputField";

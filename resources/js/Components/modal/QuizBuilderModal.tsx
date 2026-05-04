@@ -6,6 +6,7 @@ import InputField from "../form/input/InputField";
 import TextArea from "../form/input/TextArea";
 import Radio from "../form/input/Radio";
 import DatePicker from "../form/date-picker";
+import TimeSelect from "../form/TimeSelect";
 import { Modal } from "../ui/modal";
 import Label from "../form/Label";
 
@@ -18,8 +19,10 @@ type PayloadQuestion = { question_text: string; type: QuestionType; options: Pay
 interface QuizFormData {
   title: string;
   description: string;
-  open_datetime: string;
-  close_datetime: string;
+  date_open: string;
+  time_open: string;
+  date_close: string;
+  time_close: string;
   time_limit_minutes: number;
   status: "Draf" | "Diterbitkan";
   attempts_allowed: number;
@@ -113,8 +116,10 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
   const form = useForm<QuizFormData>({
     title: quiz?.title ?? "",
     description: quiz?.description ?? "",
-    open_datetime: quiz?.open_datetime ?? "",
-    close_datetime: quiz?.close_datetime ?? "",
+    date_open: quiz?.date_open ?? "",
+    time_open: quiz?.time_open ?? "00:00",
+    date_close: quiz?.date_close ?? "",
+    time_close: quiz?.time_close ?? "00:00",
     time_limit_minutes: quiz?.time_limit_minutes ?? 10,
     status: quiz?.status ?? "Draf",
     attempts_allowed: quiz?.attempts_allowed ?? 1,
@@ -233,6 +238,12 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
     return localDate.toISOString().split("T")[0];
   }
 
+  // Helper: normalize time for picker
+  function normalizeTimeForPicker(value?: string) {
+    if (!value) return "00:00";
+    return value;
+  }
+
 
   return (
     <Modal isOpen={!!isOpen} onClose={onClose} className="max-w-[330px] 2xsm:max-w-[350px] md:max-w-[1100px] m-4">
@@ -264,19 +275,33 @@ export default function QuizBuilderModal({ quiz = null, onClose, classes = [], i
               </div>
 
               <DatePicker
-                id="open_datetime"
-                label="Dibuka"
-                value={normalizeDateForPicker(form.data.open_datetime)}
-                onChange={(val) => form.setData("open_datetime", val)}
+                id="date_open"
+                label="Tanggal Dibuka"
+                value={form.data.date_open}
+                onChange={(val) => form.setData("date_open", val)}
                 placeholder="Pilih tanggal buka"
               />
+              <div className="space-y-1.5">
+                <Label htmlFor="time_open">Waktu Dibuka</Label>
+                <TimeSelect
+                  value={form.data.time_open}
+                  onChange={(val) => form.setData("time_open", val)}
+                />
+              </div>
               <DatePicker
-                id="close_datetime"
-                label="Ditutup"
-                value={normalizeDateForPicker(form.data.close_datetime)}
-                onChange={(val) => form.setData("close_datetime", val)}
+                id="date_close"
+                label="Tanggal Ditutup"
+                value={form.data.date_close}
+                onChange={(val) => form.setData("date_close", val)}
                 placeholder="Pilih tanggal tutup"
               />
+              <div className="space-y-1.5">
+                <Label htmlFor="time_close">Waktu Ditutup</Label>
+                <TimeSelect
+                  value={form.data.time_close}
+                  onChange={(val) => form.setData("time_close", val)}
+                />
+              </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="time_limit_minutes">Durasi (menit)</Label>

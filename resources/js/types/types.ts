@@ -77,8 +77,25 @@ export interface Discussion {
     status: "open" | "closed";
 }
 
+export interface Quiz {
+    id: string;
+    title: string;
+    description?: string;
+    status: string;
+    open_datetime?: string;
+    close_datetime?: string;
+    date_open?: string;
+    time_open?: string;
+    date_close?: string;
+    time_close?: string;
+    time_limit_minutes?: number;
+    attempts_allowed?: number;
+    questions_count?: number;
+    attempts?: QuizAttemptType[];
+}
+
 export interface Class {
-    quizzes: any;
+    quizzes: Quiz[];
     id: string;
     name: string;
     description: string;
@@ -266,6 +283,7 @@ export interface Deadline {
     id: string;
     title: string;
     deadline: string;
+    type: 'assignment' | 'quiz';
 }
 
 export interface Announcement {

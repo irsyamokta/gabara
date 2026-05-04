@@ -8,6 +8,8 @@ import TextArea from "@/Components/form/input/TextArea";
 import Radio from "@/Components/form/input/Radio";
 import FileInput from "@/Components/form/input/FileInput";
 import DatePicker from "@/Components/form/date-picker";
+import TimeSelect from "@/Components/form/TimeSelect";
+import Label from "@/Components/form/Label";
 
 /* Inline small Select */
 type SelectOption = { value: string; label: string };
@@ -82,8 +84,10 @@ type QuestionPayload = {
 type QuizFormData = {
   title: string;
   description: string;
-  open_datetime: string;
-  close_datetime: string;
+  date_open: string;
+  time_open: string;
+  date_close: string;
+  time_close: string;
   time_limit_minutes: number;
   status: string;
   attempts_allowed: number;
@@ -107,8 +111,10 @@ export default function QuizBuilderCard({ classes = [], quiz, mode }: Props) {
   const form = useForm<QuizFormData>({
     title: quiz?.title ?? "",
     description: quiz?.description ?? "",
-    open_datetime: quiz?.open_datetime ?? "",
-    close_datetime: quiz?.close_datetime ?? "",
+    date_open: quiz?.date_open ?? "",
+    time_open: quiz?.time_open ?? "00:00",
+    date_close: quiz?.date_close ?? "",
+    time_close: quiz?.time_close ?? "00:00",
     time_limit_minutes: quiz?.time_limit_minutes ?? 10,
     status: quiz?.status ?? "Draf",
     attempts_allowed: quiz?.attempts_allowed ?? 1,
@@ -167,8 +173,10 @@ export default function QuizBuilderCard({ classes = [], quiz, mode }: Props) {
       form.setData({
         title: quiz.title ?? "",
         description: quiz.description ?? "",
-        open_datetime: quiz.open_datetime ?? "",
-        close_datetime: quiz.close_datetime ?? "",
+        date_open: quiz.date_open ?? "",
+        time_open: quiz.time_open ?? "00:00",
+        date_close: quiz.date_close ?? "",
+        time_close: quiz.time_close ?? "00:00",
         time_limit_minutes: quiz.time_limit_minutes ?? 10,
         status: quiz.status ?? "Draf",
         attempts_allowed: quiz.attempts_allowed ?? 1,
@@ -485,36 +493,62 @@ export default function QuizBuilderCard({ classes = [], quiz, mode }: Props) {
 
             <div>
               <DatePicker
-                id="open_datetime"
-                label="Dibuka"
+                id="date_open"
+                label="Tanggal Dibuka"
                 mode="single"
-                value={form.data.open_datetime}
+                value={form.data.date_open}
                 onChange={(dateStr) =>
-                  form.setData("open_datetime", dateStr)
+                  form.setData("date_open", dateStr)
                 }
                 placeholder="Pilih tanggal mulai"
               />
-              {form.errors.open_datetime && (
+              {form.errors.date_open && (
                 <div className="text-red-500 text-sm">
-                  {form.errors.open_datetime}
+                  {form.errors.date_open}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="time_open">Waktu Dibuka</Label>
+              <TimeSelect
+                value={form.data.time_open}
+                onChange={(val) => form.setData("time_open", val)}
+              />
+              {form.errors.time_open && (
+                <div className="text-red-500 text-sm">
+                  {form.errors.time_open}
                 </div>
               )}
             </div>
 
             <div>
               <DatePicker
-                id="close_datetime"
-                label="Ditutup"
+                id="date_close"
+                label="Tanggal Ditutup"
                 mode="single"
-                value={form.data.close_datetime}
+                value={form.data.date_close}
                 onChange={(dateStr) =>
-                  form.setData("close_datetime", dateStr)
+                  form.setData("date_close", dateStr)
                 }
                 placeholder="Pilih tanggal tutup"
               />
-              {form.errors.close_datetime && (
+              {form.errors.date_close && (
                 <div className="text-red-500 text-sm">
-                  {form.errors.close_datetime}
+                  {form.errors.date_close}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="time_close">Waktu Ditutup</Label>
+              <TimeSelect
+                value={form.data.time_close}
+                onChange={(val) => form.setData("time_close", val)}
+              />
+              {form.errors.time_close && (
+                <div className="text-red-500 text-sm">
+                  {form.errors.time_close}
                 </div>
               )}
             </div>

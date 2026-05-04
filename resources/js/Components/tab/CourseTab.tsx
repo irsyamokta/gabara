@@ -136,7 +136,7 @@ export default function CourseTab({ classData }: CourseTabProps) {
             });
             resetMeeting();
             setServerErrors({});
-        } 
+        }
     }, [userRole, resetMeeting]);
 
     const handleEditMeeting = useCallback((meeting: Meeting) => {
@@ -144,7 +144,7 @@ export default function CourseTab({ classData }: CourseTabProps) {
             setIsAdding(false);
             setEditingMeeting(meeting);
             setServerErrors({});
-        } 
+        }
     }, [userRole]);
 
     const handleSubmitMeeting = useCallback(
@@ -213,7 +213,7 @@ export default function CourseTab({ classData }: CourseTabProps) {
 
             if (editingMeeting) {
                 formData.append("_method", "PATCH");
-                router.post(route("meetings.update", editingMeeting.id), formData, {
+                router.post(route("meetings.update", { class: classData.id, meeting: editingMeeting.id }), formData, {
                     forceFormData: true,
                     onSuccess: () => {
                         setEditingMeeting(null);
@@ -264,7 +264,7 @@ export default function CourseTab({ classData }: CourseTabProps) {
                 confirmButtonText: "Ya, Hapus",
                 cancelButtonText: "Batal",
             })) {
-                router.delete(route("meetings.destroy", id), {
+                router.delete(route("meetings.destroy", { class: classData.id, meeting: id }), {
                     onSuccess: () => {
                         setMeetings(prev => prev.filter(m => m.id !== id));
                     },
@@ -307,7 +307,7 @@ export default function CourseTab({ classData }: CourseTabProps) {
                     },
                 });
             }
-        } 
+        }
     }, [userRole]);
 
     const handleAddAssignmentInForm = useCallback(() => {
@@ -350,7 +350,7 @@ export default function CourseTab({ classData }: CourseTabProps) {
                 confirmButtonText: "Ya, Hapus",
                 cancelButtonText: "Batal",
             })) {
-                router.delete(route("assignments.destroy", assignmentId), {
+                router.delete(route("assignments.destroy", { class: classData.id, assignment: assignmentId }), {
                     onSuccess: () => {
                         router.reload({ only: ['meetings'] });
                     },
@@ -716,7 +716,7 @@ export default function CourseTab({ classData }: CourseTabProps) {
                                                         className="flex justify-between items-center rounded-lg"
                                                     >
                                                         <h4 className="font-medium text-primary hover:underline text-sm">
-                                                            <Link href={route("assignments.show", assignment.id)}>
+                                                            <Link href={route("assignments.show", { class: classData.id, assignment: assignment.id })}>
                                                                 {assignment.title}
                                                             </Link>
                                                         </h4>

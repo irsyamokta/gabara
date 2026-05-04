@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useForm, usePage, router } from "@inertiajs/react";
-import { toast } from "react-toastify";
 
 import { Modal } from "@/Components/ui/modal";
 import Input from "@/Components/form/input/InputField";
@@ -96,7 +95,6 @@ export const ModalAnnouncement = ({ isOpen, onClose, announcementData }: ModalAn
             router.post(route("announcements.update", announcementData.id), formData, {
                 forceFormData: true,
                 onSuccess: () => {
-                    toast.success("Pengumuman berhasil diperbarui");
                     reset();
                     setImageFile(null);
                     setImagePreview(null);
@@ -111,7 +109,6 @@ export const ModalAnnouncement = ({ isOpen, onClose, announcementData }: ModalAn
             router.post(route("announcements.store"), formData, {
                 forceFormData: true,
                 onSuccess: () => {
-                    toast.success("Pengumuman berhasil ditambahkan");
                     reset();
                     setImageFile(null);
                     setImagePreview(null);

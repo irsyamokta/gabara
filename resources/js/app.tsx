@@ -1,14 +1,14 @@
 import '../css/app.css';
+import 'react-toastify/dist/ReactToastify.css';
 import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
+import { ToastContainer } from 'react-toastify';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Gabara';
 
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 createInertiaApp({
     title: (title) => `${title}`,
@@ -27,11 +27,13 @@ createInertiaApp({
                     position="top-right"
                     autoClose={3000}
                     hideProgressBar={false}
-                    newestOnTop
+                    newestOnTop={false}
                     closeOnClick
-                    pauseOnHover
+                    rtl={false}
+                    pauseOnFocusLoss
                     draggable
-                    theme="colored"
+                    pauseOnHover
+                    theme="light"
                 />
             </>
         );

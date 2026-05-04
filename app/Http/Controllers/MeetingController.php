@@ -25,7 +25,10 @@ class MeetingController extends Controller
 
     public function store(Request $request)
     {
-        $validator = ValidationHelper::meeting($request->all());
+        $data = $request->all();
+        $data['materials'] = $request->input('materials', []);
+        $data['assignments'] = $request->input('assignments', []);
+        $validator = ValidationHelper::meeting($data);
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
@@ -37,31 +40,29 @@ class MeetingController extends Controller
                 'description' => $request->description,
             ]);
 
-            if ($request->has('materials')) {
-                foreach ($request->materials as $materialData) {
-                    if (!empty($materialData['link'])) {
-                        Material::create([
-                            'meeting_id' => $meeting->id,
-                            'link' => $materialData['link'],
-                        ]);
-                    }
+            $materials = $request->input('materials', []);
+            foreach ($materials as $materialData) {
+                if (!empty($materialData['link'])) {
+                    Material::create([
+                        'meeting_id' => $meeting->id,
+                        'link' => $materialData['link'],
+                    ]);
                 }
             }
 
-            if ($request->has('assignments')) {
-                foreach ($request->assignments as $assignmentData) {
-                    if (!empty($assignmentData['title'])) {
-                        Assignment::create([
-                            'meeting_id' => $meeting->id,
-                            'title' => $assignmentData['title'],
-                            'description' => $assignmentData['description'],
-                            'date_open' => $assignmentData['date_open'],
-                            'time_open' => $assignmentData['time_open'],
-                            'date_close' => $assignmentData['date_close'],
-                            'time_close' => $assignmentData['time_close'],
-                            'file_link' => $assignmentData['file_link'] ?? null,
-                        ]);
-                    }
+            $assignments = $request->input('assignments', []);
+            foreach ($assignments as $assignmentData) {
+                if (!empty($assignmentData['title'])) {
+                    Assignment::create([
+                        'meeting_id' => $meeting->id,
+                        'title' => $assignmentData['title'],
+                        'description' => $assignmentData['description'],
+                        'date_open' => $assignmentData['date_open'],
+                        'time_open' => $assignmentData['time_open'],
+                        'date_close' => $assignmentData['date_close'],
+                        'time_close' => $assignmentData['time_close'],
+                        'file_link' => $assignmentData['file_link'] ?? null,
+                    ]);
                 }
             }
 
@@ -69,10 +70,13 @@ class MeetingController extends Controller
         });
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $classId, $meetingId)
     {
-        $meeting = Meeting::findOrFail($id);
-        $validator = ValidationHelper::meeting($request->all(), true, $id);
+        $meeting = Meeting::findOrFail($meetingId);
+        $data = $request->all();
+        $data['materials'] = $request->input('materials', []);
+        $data['assignments'] = $request->input('assignments', []);
+        $validator = ValidationHelper::meeting($data, true, $meetingId);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
@@ -84,72 +88,70 @@ class MeetingController extends Controller
                 'description' => $request->description,
             ]);
 
-            if ($request->has('materials')) {
-                $materialIds = collect($request->materials)
-                    ->pluck('id')
-                    ->filter()
-                    ->toArray();
+            $materials = $request->input('materials', []);
+            $materialIds = collect($materials)
+                ->pluck('id')
+                ->filter()
+                ->toArray();
 
-                $meeting->materials()
-                    ->whereNotIn('id', $materialIds)
-                    ->delete();
+            $meeting->materials()
+                ->whereNotIn('id', $materialIds)
+                ->delete();
 
-                foreach ($request->materials as $materialData) {
-                    if (!empty($materialData['id'])) {
-                        $material = Material::find($materialData['id']);
-                        if ($material) {
-                            $material->update([
-                                'link' => $materialData['link'],
-                            ]);
-                        }
-                    } else {
-                        if (!empty($materialData['link'])) {
-                            Material::create([
-                                'meeting_id' => $meeting->id,
-                                'link'       => $materialData['link'],
-                            ]);
-                        }
+            foreach ($materials as $materialData) {
+                if (!empty($materialData['id'])) {
+                    $material = Material::find($materialData['id']);
+                    if ($material) {
+                        $material->update([
+                            'link' => $materialData['link'],
+                        ]);
+                    }
+                } else {
+                    if (!empty($materialData['link'])) {
+                        Material::create([
+                            'meeting_id' => $meeting->id,
+                            'link'       => $materialData['link'],
+                        ]);
                     }
                 }
             }
 
-            if ($request->has('assignments')) {
-                $assignmentIds = collect($request->assignments)
-                    ->pluck('id')
-                    ->filter()
-                    ->toArray();
+            $assignments = $request->input('assignments', []);
+            $assignmentIds = collect($assignments)
+                ->pluck('id')
+                ->filter()
+                ->toArray();
 
-                $meeting->assignments()
-                    ->whereNotIn('id', $assignmentIds)
-                    ->delete();
+            $meeting->assignments()
+                ->whereNotIn('id', $assignmentIds)
+                ->delete();
 
-                foreach ($request->assignments as $assignmentData) {
-                    if (!empty($assignmentData['id'])) {
-                        $assignment = Assignment::find($assignmentData['id']);
-                        if ($assignment) {
-                            $assignment->update([
-                                'title'       => $assignmentData['title'],
-                                'description' => $assignmentData['description'],
-                                'date_open'   => $assignmentData['date_open'],
-                                'time_open'   => $assignmentData['time_open'],
-                                'date_close'  => $assignmentData['date_close'],
-                                'time_close'  => $assignmentData['time_close'],
-                                'file_link'   => $assignmentData['file_link'] ?? null,
-                            ]);
-                        }
-                    } else {
-                        if (!empty($assignmentData['title'])) {
-                            Assignment::create([
-                                'meeting_id'  => $meeting->id,
-                                'title'       => $assignmentData['title'],
-                                'description' => $assignmentData['description'],
-                                'date_open'   => $assignmentData['date_open'],
-                                'time_open'   => $assignmentData['time_open'],
-                                'date_close'  => $assignmentData['date_close'],
-                                'time_close'  => $assignmentData['time_close'],
-                                'file_link'   => $assignmentData['file_link'] ?? null,
-                            ]);
-                        }
+            foreach ($assignments as $assignmentData) {
+                if (!empty($assignmentData['id'])) {
+                    $assignment = Assignment::find($assignmentData['id']);
+                    if ($assignment) {
+                        $assignment->update([
+                            'title'       => $assignmentData['title'],
+                            'description' => $assignmentData['description'],
+                            'date_open'   => $assignmentData['date_open'],
+                            'time_open'   => $assignmentData['time_open'],
+                            'date_close'  => $assignmentData['date_close'],
+                            'time_close'  => $assignmentData['time_close'],
+                            'file_link'   => $assignmentData['file_link'] ?? null,
+                        ]);
+                    }
+                } else {
+                    if (!empty($assignmentData['title'])) {
+                        Assignment::create([
+                            'meeting_id'  => $meeting->id,
+                            'title'       => $assignmentData['title'],
+                            'description' => $assignmentData['description'],
+                            'date_open'   => $assignmentData['date_open'],
+                            'time_open'   => $assignmentData['time_open'],
+                            'date_close'  => $assignmentData['date_close'],
+                            'time_close'  => $assignmentData['time_close'],
+                            'file_link'   => $assignmentData['file_link'] ?? null,
+                        ]);
                     }
                 }
             }
@@ -158,9 +160,9 @@ class MeetingController extends Controller
         });
     }
 
-    public function destroy($id)
+    public function destroy($classId, $meetingId)
     {
-        $meeting = Meeting::findOrFail($id);
+        $meeting = Meeting::findOrFail($meetingId);
         $meeting->delete();
 
         return redirect()->back()->with('success', 'Pertemuan berhasil dihapus.');
