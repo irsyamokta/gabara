@@ -10,15 +10,7 @@ import GradesTab from "@/Components/tab/GradesTab";
 import PageBreadcrumb from "@/Components/ui/breadcrumb/Breadcrumb";
 import { ClassDetailPageProps } from "@/types/types";
 
-const RoleBadge = ({ role }: { role?: string }) => {
-    if (role === "admin") {
-        return <Badge color="error" size="sm" className="ml-2 uppercase text-[10px] px-1.5 py-0 rounded font-bold">Admin</Badge>;
-    }
-    if (role === "mentor") {
-        return <Badge color="info" size="sm" className="ml-2 uppercase text-[10px] px-1.5 py-0 rounded font-bold">Mentor</Badge>;
-    }
-    return null;
-};
+import RoleBadge from "@/Components/ui/badge/RoleBadge";
 
 export default function ClassDetailCard() {
     const { props } = usePage<ClassDetailPageProps & { activeTab?: string }>();
