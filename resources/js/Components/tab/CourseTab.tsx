@@ -162,32 +162,20 @@ export default function CourseTab({ classData }: CourseTabProps) {
                 .map((m) => ({ link: m.link, id: m.id }));
             setMeetingData("materials", validMaterials);
 
-            const validAssignments =
-                showAddAssignment &&
-                    meetingAssignmentData.title &&
-                    meetingAssignmentData.description &&
-                    meetingAssignmentData.date_open &&
-                    meetingAssignmentData.time_open &&
-                    meetingAssignmentData.date_close &&
-                    meetingAssignmentData.time_close
-                    ? [
-                        {
-                            title: meetingAssignmentData.title,
-                            description: meetingAssignmentData.description,
-                            date_open: meetingAssignmentData.date_open,
-                            time_open: meetingAssignmentData.time_open || "00:00",
-                            date_close: meetingAssignmentData.date_close,
-                            time_close: meetingAssignmentData.time_close || "00:00",
-                            file_link: meetingAssignmentData.file_link || undefined,
-                            id: meetingAssignmentData.id,
-                        },
-                    ]
-                    : [];
-
-            if (showAddAssignment && !validAssignments.length) {
-                setLoading(false);
-                return;
-            }
+            const validAssignments = showAddAssignment
+                ? [
+                    {
+                        title: meetingAssignmentData.title,
+                        description: meetingAssignmentData.description,
+                        date_open: meetingAssignmentData.date_open,
+                        time_open: meetingAssignmentData.time_open || "00:00",
+                        date_close: meetingAssignmentData.date_close,
+                        time_close: meetingAssignmentData.time_close || "00:00",
+                        file_link: meetingAssignmentData.file_link || undefined,
+                        id: meetingAssignmentData.id,
+                    },
+                ]
+                : [];
 
             setMeetingData("assignments", validAssignments);
 
