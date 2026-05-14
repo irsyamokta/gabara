@@ -20,12 +20,12 @@ const GradesTab: React.FC = () => {
     // Removed interface QuizWithAttempt as we now use proper Quiz type
 
 
-    const allAssignments = classData.meetings.flatMap(meeting => meeting.assignments);
-    const allSubmissions = classData.meetings.flatMap(meeting =>
-        meeting.assignments.flatMap(assignment => assignment.submissions)
+    const allAssignments = (classData.meetings || []).flatMap(meeting => meeting.assignments || []);
+    const allSubmissions = (classData.meetings || []).flatMap(meeting =>
+        (meeting.assignments || []).flatMap(assignment => assignment.submissions || [])
     );
 
-    const enrolledStudents = classData.enrollments.map(enrollment => enrollment.student);
+    const enrolledStudents = (classData.enrollments || []).map(enrollment => enrollment.student);
 
     // ==================== ASSIGNMENT GRADES ====================
     const assignmentGrades: Grade[] = isStudent

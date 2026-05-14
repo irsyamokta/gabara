@@ -21,10 +21,10 @@ const RoleBadge = ({ role }: { role?: string }) => {
 };
 
 export default function ClassDetailCard() {
-    const { props } = usePage<ClassDetailPageProps>();
-    const { class: classData, userRole } = props;
+    const { props } = usePage<ClassDetailPageProps & { activeTab?: string }>();
+    const { class: classData, userRole, activeTab: initialTab } = props;
 
-    const [activeTab, setActiveTab] = useState("Kursus");
+    const [activeTab, setActiveTab] = useState(initialTab || "Kursus");
 
     const tabs = ["Kursus", "Peserta", "Diskusi", "Nilai"];
 

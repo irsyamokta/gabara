@@ -76,61 +76,69 @@ const ReplyItem = memo(function ReplyItem({
 
   return (
 
-    <div className="flex items-start gap-1">
-      <img src={authorAvatar} alt={authorName} className={`${level > 0 ? "w-7 h-7" : "w-9 h-9"} rounded-full object-cover border`} />
-      <div className="flex-1">
-        <div className="flex items-center">
-          <p className="text-sm font-medium text-gray-800">{authorName}</p>
-          <RoleBadge role={reply.user?.role} />
-        </div>
-        <p className="text-xs text-gray-500">{reply.posted_at ? new Date(reply.posted_at).toLocaleString() : ""}</p>
-
-        <div className="mt-2 text-sm text-gray-700" dangerouslySetInnerHTML={renderReplyHtml(reply.reply_text ?? "")} />
-
-        {canReply && (
-          <div className="mt-2">
-            <button
-              type="button"
-              className="text-xs text-blue-600"
-              onClick={() => {
-                setOpenReply((s) => !s);
-                // prefill mention
-                setValue((v) => (v ? v : `@${reply.user?.name ?? reply.user_name ?? ""} `));
-              }}
-            >
-              {openReply ? "Batal" : "Balas"}
-            </button>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-start gap-1">
+        <img src={authorAvatar} alt={authorName} className={`${level > 0 ? "w-7 h-7" : "w-9 h-9"} rounded-full object-cover border`} />
+        <div className="flex-1">
+          <div className="flex items-center">
+            <p className="text-sm font-medium text-gray-800">{authorName}</p>
+            <RoleBadge role={reply.user?.role} />
           </div>
-        )}
+          <p className="text-xs text-gray-500">{reply.posted_at ? new Date(reply.posted_at).toLocaleString() : ""}</p>
 
-        {openReply && (
-          <form onSubmit={handleSubmit} className="mt-2">
-            <RichTextEditor value={value} onChange={(v: string) => setValue(v)} />
-            <div className="flex gap-2 justify-end mt-2">
-              <Button variant="default" size="sm" type="submit" disabled={submitting}>
-                {submitting ? "Mengirim..." : "Kirim Balasan"}
-              </Button>
+          <div className="mt-2 text-sm text-gray-700" dangerouslySetInnerHTML={renderReplyHtml(reply.reply_text ?? "")} />
+
+          {canReply && (
+            <div className="mt-2">
+              <button
+                type="button"
+                className="text-xs text-blue-600"
+                onClick={() => {
+                  setOpenReply((s) => !s);
+                  // prefill mention
+                  setValue((v) => (v ? v : `@${reply.user?.name ?? reply.user_name ?? ""} `));
+                }}
+              >
+                {openReply ? "Batal" : "Balas"}
+              </button>
             </div>
-          </form>
-        )}
+          )}
 
-        {/* children (recursively) */}
-        {reply.children && reply.children.length > 0 && (
-          <ul className="mt-3 pl-6 border-l space-y-2">
-            {reply.children.map((child: any) => (
-              <ReplyItem
-                key={child.id}
-                reply={child}
-                currentUser={currentUser}
-                onNestedSubmit={onNestedSubmit}
-                canReply={canReply}
-                level={level + 1}
-                usernames={usernames}
-              />
-            ))}
-          </ul>
-        )}
+          {openReply && (
+            <form onSubmit={handleSubmit} className="mt-2">
+              <RichTextEditor value={value} onChange={(v: string) => setValue(v)} />
+              <div className="flex gap-2 justify-end mt-2">
+                <Button variant="default" size="sm" type="submit" disabled={submitting}>
+                  {submitting ? "Mengirim..." : "Kirim Balasan"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
+
+      {/* children (recursively) - Responsive nesting: limit to level 3 on mobile, level 5 on desktop */}
+      {reply.children && reply.children.length > 0 && (
+        <ul className={`mt-3 space-y-2 ${
+          level < 2 
+            ? "pl-6 border-l ml-3 md:ml-4" 
+            : level < 4 
+              ? "pl-0 md:pl-6 md:border-l md:ml-4" 
+              : "pl-0"
+        }`}>
+          {reply.children.map((child: any) => (
+            <ReplyItem
+              key={child.id}
+              reply={child}
+              currentUser={currentUser}
+              onNestedSubmit={onNestedSubmit}
+              canReply={canReply}
+              level={level + 1}
+              usernames={usernames}
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 });
