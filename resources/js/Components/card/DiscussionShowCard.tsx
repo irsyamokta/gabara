@@ -1,13 +1,28 @@
 // resources/js/Pages/Classes/DiscussionShow.tsx
 import React, { useState, useCallback, memo } from "react";
 import { useForm, usePage, router } from "@inertiajs/react";
+import { toast } from "react-toastify";
 import PageBreadcrumb from "@/Components/ui/breadcrumb/Breadcrumb";
 import Button from "@/Components/ui/button/Button";
 import RichTextEditor from "@/Components/form/RichTextEditor";
+import Badge from "@/Components/ui/badge/Badge";
 import { confirmDialog } from "@/utils/confirmationDialog";
 import { createMarkup } from "@/utils/htmlMarkup";
 import EmptyState from "@/Components/empty/EmptyState";
 import linkifyMentions from "@/utils/mentions";
+
+/**
+ * Badge for identifying user roles (Admin/Mentor)
+ */
+const RoleBadge = ({ role }: { role?: string }) => {
+  if (role === "admin") {
+    return <Badge color="error" size="sm" className="ml-2 uppercase text-[10px] px-1.5 py-0 rounded font-bold">Admin</Badge>;
+  }
+  if (role === "mentor") {
+    return <Badge color="info" size="sm" className="ml-2 uppercase text-[10px] px-1.5 py-0 rounded font-bold">Mentor</Badge>;
+  }
+  return null;
+};
 
 /**
  * ReplyItem: recursive component to render a reply and its children.
@@ -64,7 +79,10 @@ const ReplyItem = memo(function ReplyItem({
     <div className="flex items-start gap-1">
       <img src={authorAvatar} alt={authorName} className={`${level > 0 ? "w-7 h-7" : "w-9 h-9"} rounded-full object-cover border`} />
       <div className="flex-1">
-        <p className="text-sm font-medium text-gray-800">{authorName}</p>
+        <div className="flex items-center">
+          <p className="text-sm font-medium text-gray-800">{authorName}</p>
+          <RoleBadge role={reply.user?.role} />
+        </div>
         <p className="text-xs text-gray-500">{reply.posted_at ? new Date(reply.posted_at).toLocaleString() : ""}</p>
 
         <div className="mt-2 text-sm text-gray-700" dangerouslySetInnerHTML={renderReplyHtml(reply.reply_text ?? "")} />
@@ -142,8 +160,10 @@ export default function DiscussionShow() {
   const isMentorOrAdmin = user?.role === "mentor" || user?.role === "admin";
   const isOpen = discussion.status === "open";
 
-  // Extract all usernames from enrolled students and mentor
+  // Extract all usernames from enrolled students, mentor, and ALL repliers
   const usernames: string[] = [];
+
+  // 1. Enrolled students
   if (classData.enrollments) {
     classData.enrollments.forEach((enrollment: any) => {
       if (enrollment.student?.name) {
@@ -151,12 +171,36 @@ export default function DiscussionShow() {
       }
     });
   }
+
+  // 2. Class mentor
   if (classData.mentor?.name) {
-    usernames.push(classData.mentor.name);
+    if (!usernames.includes(classData.mentor.name)) {
+      usernames.push(classData.mentor.name);
+    }
   }
-  // Add discussion opener if not already included
-  if (discussion.opener_student?.name && !usernames.includes(discussion.opener_student.name)) {
-    usernames.push(discussion.opener_student.name);
+
+  // 3. Discussion opener
+  if (discussion.opener_student?.name) {
+    if (!usernames.includes(discussion.opener_student.name)) {
+      usernames.push(discussion.opener_student.name);
+    }
+  }
+
+  // 4. All repliers (recursive helper)
+  const collectRepliers = (replies: any[]) => {
+    replies.forEach((r) => {
+      const name = r.user?.name || r.user_name;
+      if (name && !usernames.includes(name)) {
+        usernames.push(name);
+      }
+      if (r.children && r.children.length > 0) {
+        collectRepliers(r.children);
+      }
+    });
+  };
+
+  if (discussion.discussion_replies) {
+    collectRepliers(discussion.discussion_replies);
   }
 
   // top-level reply
@@ -179,7 +223,10 @@ export default function DiscussionShow() {
             setData("reply_text", "");
             router.reload({ only: ["discussion"] });
           },
-          onError: () => {
+          onError: (errors: any) => {
+            if (errors.reply_text) {
+              toast.error(errors.reply_text);
+            }
           },
         }
       );
@@ -199,7 +246,10 @@ export default function DiscussionShow() {
             router.reload({ only: ["discussion"] });
             resolve();
           },
-          onError: () => {
+          onError: (errors: any) => {
+            if (errors.reply_text) {
+              toast.error(errors.reply_text);
+            }
             reject(new Error("failed"));
           },
         }
@@ -233,10 +283,13 @@ export default function DiscussionShow() {
 
             <div className="flex flex-col">
               <h1 className="text-xl md:text-2xl font-bold leading-snug break-words">{discussion.title}</h1>
-              <p className="text-sm text-gray-500">
-                oleh <span className="font-medium">{discussion.opener_student?.name ?? "Unknown"}</span> •{" "}
-                {discussion.created_at ? new Date(discussion.created_at).toLocaleString() : ""}
-              </p>
+              <div className="flex items-center text-sm text-gray-500 mt-1">
+                <span>oleh</span>
+                <span className="font-medium mx-1 text-gray-800">{discussion.opener_student?.name ?? "Unknown"}</span>
+                <RoleBadge role={discussion.opener_student?.role} />
+                <span className="mx-1">•</span>
+                <span>{discussion.created_at ? new Date(discussion.created_at).toLocaleString() : ""}</span>
+              </div>
             </div>
           </div>
 

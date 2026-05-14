@@ -18,10 +18,10 @@ class DiscussionController extends Controller
     {
         // eager load relations yang diperlukan untuk tampilan class detail
         $class->load([
-            'mentor:id,name,avatar',
-            'enrollments.student:id,name,avatar',
+            'mentor:id,name,avatar,role',
+            'enrollments.student:id,name,avatar,role',
             'discussions' => function ($q) {
-                $q->with('openerStudent:id,name,avatar')->orderByDesc('created_at');
+                $q->with('openerStudent:id,name,avatar,role')->orderByDesc('created_at');
             },
         ]);
 
@@ -85,11 +85,11 @@ class DiscussionController extends Controller
 
     // Load discussion opener + all replies dengan nested children rekursif
     $discussion->load([
-        'openerStudent:id,name,avatar',
+        'openerStudent:id,name,avatar,role',
         'discussionReplies' => function ($q) {
             $q->whereNull('parent_id')
               ->with([
-                  'user:id,name,avatar',
+                  'user:id,name,avatar,role',
                   // relasi children() di model sudah rekursif, cukup panggil sekali
                   'children'
               ])

@@ -33,7 +33,9 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
+    const [serverErrors, setServerErrors] = useState<Record<string, string>>(
+        {},
+    );
     const [copied, setCopied] = useState(false);
 
     const initialFormData: ClassForm = {
@@ -48,10 +50,13 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
     const { data, setData, reset } = useForm<ClassForm>(initialFormData);
 
     const generateEnrollmentCode = () => {
-        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        const characters =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         let code = "";
         for (let i = 0; i < 10; i++) {
-            code += characters.charAt(Math.floor(Math.random() * characters.length));
+            code += characters.charAt(
+                Math.floor(Math.random() * characters.length),
+            );
         }
         setData("enrollment_code", code);
     };
@@ -65,7 +70,7 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                 },
                 () => {
                     setCopied(false);
-                }
+                },
             );
         }
     };
@@ -119,16 +124,21 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
         setLoading(true);
 
         if (role === "student") {
-            router.post(route("enrollments.store"), { enrollment_code: data.enrollment_code }, {
-                onSuccess: () => {
-                    reset();
-                    onClose();
+            router.post(
+                route("enrollments.store"),
+                { enrollment_code: data.enrollment_code },
+                {
+                    onSuccess: (page: any) => {
+                        if (page.props.flash?.error) return;
+                        reset();
+                        onClose();
+                    },
+                    onError: (errors) => {
+                        setServerErrors(errors);
+                    },
+                    onFinish: () => setLoading(false),
                 },
-                onError: (errors) => {
-                    setServerErrors(errors);
-                },
-                onFinish: () => setLoading(false),
-            });
+            );
             return;
         }
 
@@ -148,7 +158,8 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
             formData.append("_method", "PATCH");
             router.post(route("classes.update", classData.id), formData, {
                 forceFormData: true,
-                onSuccess: () => {
+                onSuccess: (page: any) => {
+                    if (page.props.flash?.error) return;
                     reset();
                     setImageFile(null);
                     setImagePreview(null);
@@ -162,7 +173,8 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
         } else {
             router.post(route("classes.store"), formData, {
                 forceFormData: true,
-                onSuccess: () => {
+                onSuccess: (page: any) => {
+                    if (page.props.flash?.error) return;
                     reset();
                     setImageFile(null);
                     setImagePreview(null);
@@ -177,17 +189,28 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-[330px] 2xsm:max-w-[350px] md:max-w-[700px] m-4">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            className="max-w-[330px] 2xsm:max-w-[350px] md:max-w-[700px] m-4"
+        >
             <div className="no-scrollbar relative w-full max-w-[700px] max-h-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
                 <h4 className="text-2xl font-semibold mb-4">
-                    {role === "student" ? "Bergabung ke Kelas" : classData ? "Edit Kelas" : "Tambah Kelas"}
+                    {role === "student"
+                        ? "Bergabung ke Kelas"
+                        : classData
+                          ? "Edit Kelas"
+                          : "Tambah Kelas"}
                 </h4>
 
                 <form
                     className="flex flex-col gap-4"
                     onSubmit={handleSubmit}
                     onKeyDown={(e) => {
-                        if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+                        if (
+                            e.key === "Enter" &&
+                            (e.target as HTMLElement).tagName !== "TEXTAREA"
+                        ) {
                             e.preventDefault();
                         }
                     }}
@@ -197,11 +220,15 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                             <Label required={true}>Kode Enrollment</Label>
                             <Input
                                 value={data.enrollment_code}
-                                onChange={(e) => setData("enrollment_code", e.target.value)}
+                                onChange={(e) =>
+                                    setData("enrollment_code", e.target.value)
+                                }
                                 placeholder="Masukkan kode kelas"
                             />
                             {serverErrors.enrollment_code && (
-                                <p className="text-xs text-red-500 mt-1">{serverErrors.enrollment_code}</p>
+                                <p className="text-xs text-red-500 mt-1">
+                                    {serverErrors.enrollment_code}
+                                </p>
                             )}
                         </div>
                     ) : (
@@ -223,7 +250,9 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                                     />
                                 )}
                                 {serverErrors.thumbnail && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.thumbnail}</p>
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {serverErrors.thumbnail}
+                                    </p>
                                 )}
                             </div>
 
@@ -232,12 +261,16 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                                 <Label required={true}>Nama Kelas</Label>
                                 <Input
                                     value={data.name}
-                                    onChange={(e) => setData("name", e.target.value)}
+                                    onChange={(e) =>
+                                        setData("name", e.target.value)
+                                    }
                                     placeholder="Masukkan nama kelas"
                                     required
                                 />
                                 {serverErrors.name && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.name}</p>
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {serverErrors.name}
+                                    </p>
                                 )}
                             </div>
 
@@ -246,10 +279,14 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                                 <Label required={true}>Deskripsi</Label>
                                 <RichTextEditor
                                     value={data.description ?? ""}
-                                    onChange={(v: string) => setData("description", v ?? "")}
+                                    onChange={(v: string) =>
+                                        setData("description", v ?? "")
+                                    }
                                 />
                                 {serverErrors.description && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.description}</p>
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {serverErrors.description}
+                                    </p>
                                 )}
                             </div>
 
@@ -260,7 +297,12 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                                     <div className="relative flex-1">
                                         <Input
                                             value={data.enrollment_code}
-                                            onChange={(e) => setData("enrollment_code", e.target.value)}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "enrollment_code",
+                                                    e.target.value,
+                                                )
+                                            }
                                             placeholder="Masukkan kode kelas"
                                             className="pr-10"
                                             readOnly
@@ -289,7 +331,9 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                                     </button>
                                 </div>
                                 {serverErrors.enrollment_code && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.enrollment_code}</p>
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {serverErrors.enrollment_code}
+                                    </p>
                                 )}
                             </div>
 
@@ -298,17 +342,36 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                                 <Label required={true}>Tahun Akademik</Label>
                                 <Select
                                     value={data.academic_year_tag}
-                                    onChange={(value) => setData("academic_year_tag", value)}
+                                    onChange={(value) =>
+                                        setData("academic_year_tag", value)
+                                    }
                                     options={[
-                                        { value: "2025/2026", label: "2025/2026" },
-                                        { value: "2026/2027", label: "2026/2027" },
-                                        { value: "2027/2028", label: "2027/2028" },
-                                        { value: "2028/2029", label: "2028/2029" },
-                                        { value: "2029/2030", label: "2029/2030" },
+                                        {
+                                            value: "2025/2026",
+                                            label: "2025/2026",
+                                        },
+                                        {
+                                            value: "2026/2027",
+                                            label: "2026/2027",
+                                        },
+                                        {
+                                            value: "2027/2028",
+                                            label: "2027/2028",
+                                        },
+                                        {
+                                            value: "2028/2029",
+                                            label: "2028/2029",
+                                        },
+                                        {
+                                            value: "2029/2030",
+                                            label: "2029/2030",
+                                        },
                                     ]}
                                 />
                                 {serverErrors.academic_year_tag && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.academic_year_tag}</p>
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {serverErrors.academic_year_tag}
+                                    </p>
                                 )}
                             </div>
 
@@ -317,14 +380,18 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                                 <Label required={true}>Visibilitas</Label>
                                 <Select
                                     value={data.visibility ? "1" : "0"}
-                                    onChange={(value) => setData("visibility", value === "1")}
+                                    onChange={(value) =>
+                                        setData("visibility", value === "1")
+                                    }
                                     options={[
                                         { value: "1", label: "Publik" },
                                         { value: "0", label: "Privat" },
                                     ]}
                                 />
                                 {serverErrors.visibility && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.visibility}</p>
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {serverErrors.visibility}
+                                    </p>
                                 )}
                             </div>
                         </>
@@ -340,13 +407,21 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                         >
                             Batal
                         </Button>
-                        <Button type="submit" variant="default" disabled={loading}>
+                        <Button
+                            type="submit"
+                            variant="default"
+                            disabled={loading}
+                        >
                             {loading ? (
                                 <>
                                     <AiOutlineLoading3Quarters className="animate-spin mr-2" />
                                     Memproses...
                                 </>
-                            ) : role === "student" ? "Bergabung" : "Simpan"}
+                            ) : role === "student" ? (
+                                "Bergabung"
+                            ) : (
+                                "Simpan"
+                            )}
                         </Button>
                     </div>
                 </form>

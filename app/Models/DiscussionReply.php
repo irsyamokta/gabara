@@ -53,7 +53,7 @@ class DiscussionReply extends Model
     public function children()
 {
     return $this->hasMany(DiscussionReply::class, 'parent_id')
-        ->with(['user:id,name,avatar', 'children'])
+        ->with(['user:id,name,avatar,role', 'children'])
         ->orderBy('posted_at', 'asc');
 }
 

@@ -31,8 +31,9 @@ class DiscussionReplyController extends Controller
 
         $class = ClassModel::findOrFail($classId);
 
-        // Hanya student terdaftar boleh reply
-        if (! $class->enrollments()->where('student_id', Auth::id())->exists()) {
+        // Hanya student terdaftar boleh reply (mentor dan admin di-bypass)
+        $user = Auth::user();
+        if ($user->role === 'student' && ! $class->enrollments()->where('student_id', $user->id)->exists()) {
             abort(403, 'Anda tidak terdaftar di kelas ini.');
         }
 
@@ -52,16 +53,17 @@ class DiscussionReplyController extends Controller
         // Assign authenticated user
         $user = Auth::user();
 
-        // ANTI-SPAM: minimal jeda 2 menit per user per discussion (mentors/admin bypass)
-        if (! in_array($user->role, ['mentor','admin'])) {
+        // ANTI-SPAM: minimal jeda 2 menit per user per discussion untuk BALASAN (nested)
+        if ($parentId) {
             $lastReply = DiscussionReply::where('discussion_id', $discussion->id)
                 ->where('user_id', $user->id)
+                ->whereNotNull('parent_id') // Hanya cek balasan nested sebelumnya
                 ->latest('created_at')
                 ->first();
 
             if ($lastReply && $lastReply->created_at->gt(now()->subMinutes(2))) {
                 // return back with friendly message (Inertia will show flash)
-                return back()->withErrors(['reply_text' => 'Anda hanya bisa membalas setiap 2 menit sekali.']);
+                return back()->withErrors(['reply_text' => 'Anda hanya bisa membalas komentar setiap 2 menit sekali.']);
             }
         }
 
