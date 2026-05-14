@@ -199,7 +199,30 @@ class ValidationHelper
             ],
             'assignments.*.time_open' => ['required', 'string'],
             'assignments.*.date_close' => ['required', 'date', 'after_or_equal:assignments.*.date_open'],
-            'assignments.*.time_close' => ['required', 'string', 'after:assignments.*.time_open'],
+            'assignments.*.time_close' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) use ($data) {
+                    // Extract index from attribute (e.g. assignments.0.time_close)
+                    preg_match('/assignments\.(\d+)\.time_close/', $attribute, $matches);
+                    $index = $matches[1] ?? null;
+
+                    if ($index !== null && isset($data['assignments'][$index])) {
+                        $assignment = $data['assignments'][$index];
+                        $dateOpen = $assignment['date_open'] ?? null;
+                        $dateClose = $assignment['date_close'] ?? null;
+                        $timeOpen = $assignment['time_open'] ?? null;
+
+                        if ($dateOpen && $dateClose && $timeOpen) {
+                            if ($dateOpen === $dateClose) {
+                                if (strtotime($value) <= strtotime($timeOpen)) {
+                                    $fail('Waktu ditutup harus setelah waktu dibuka pada hari yang sama.');
+                                }
+                            }
+                        }
+                    }
+                }
+            ],
             'assignments.*.file_link' => ['nullable', 'url'],
         ];
 
