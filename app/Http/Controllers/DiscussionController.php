@@ -16,17 +16,70 @@ class DiscussionController extends Controller
      */
     public function index(ClassModel $class)
     {
-        // eager load relations yang diperlukan untuk tampilan class detail
+        $user = Auth::user();
+
+        // eager load relations yang diperlukan untuk tampilan class detail (sync with ClassController@show)
         $class->load([
-            'mentor:id,name,avatar',
-            'enrollments.student:id,name,avatar',
+            'mentor:id,name,avatar,role',
             'discussions' => function ($q) {
-                $q->with('openerStudent:id,name,avatar')->orderByDesc('created_at');
+                $q->with('openerStudent:id,name,avatar,role')->orderByDesc('created_at');
+            },
+            'meetings' => function ($query) {
+                $query->select('id', 'class_id', 'title', 'description', 'created_at')
+                    ->with([
+                        'materials' => function ($query) {
+                            $query->select('id', 'meeting_id', 'link', 'created_at');
+                        },
+                        'assignments' => function ($query) {
+                            $query->select(
+                                'id',
+                                'meeting_id',
+                                'title',
+                                'description',
+                                'date_open',
+                                'time_open',
+                                'date_close',
+                                'time_close',
+                                'file_link',
+                                'created_at'
+                            )->with(['submissions' => function ($query) {
+                                $query->select(
+                                    'submissions.id',
+                                    'submissions.assignment_id',
+                                    'submissions.student_id',
+                                    'submissions.feedback',
+                                    'submissions.submission_content',
+                                    'submissions.grade',
+                                    'submissions.submitted_at',
+                                    'submissions.created_at',
+                                    'users.name as student_name'
+                                )->join('users', 'submissions.student_id', '=', 'users.id');
+                            }]);
+                        },
+                    ]);
+            },
+            'enrollments' => function ($query) {
+                $query->select('enrollments.id', 'enrollments.class_id', 'enrollments.student_id')
+                    ->with(['student:id,name,avatar,role']);
+            },
+            'quizzes' => function ($query) use ($user) {
+                $query->withCount('questions')
+                      ->with(['attempts' => function ($q) use ($user) {
+                          if ($user->role === 'student') {
+                              $q->where('student_id', $user->id);
+                          } else {
+                              $q->with('student:id,name');
+                          }
+                      }])
+                      ->orderByDesc('created_at');
+
+                if ($user->role === 'student') {
+                    $query->where('status', 'Diterbitkan');
+                }
             },
         ]);
 
         // hanya peserta terdaftar yang boleh mengakses forum bila user adalah student
-        $user = Auth::user();
         if ($user->role === 'student' && ! $class->enrollments()->where('student_id', $user->id)->exists()) {
             abort(403, 'Anda tidak terdaftar di kelas ini.');
         }
@@ -35,6 +88,7 @@ class DiscussionController extends Controller
             'class' => $class,
             'userRole' => $user->role,
             'auth' => ['user' => $user],
+            'activeTab' => 'Diskusi',
         ]);
     }
 
@@ -85,11 +139,11 @@ class DiscussionController extends Controller
 
     // Load discussion opener + all replies dengan nested children rekursif
     $discussion->load([
-        'openerStudent:id,name,avatar',
+        'openerStudent:id,name,avatar,role',
         'discussionReplies' => function ($q) {
             $q->whereNull('parent_id')
               ->with([
-                  'user:id,name,avatar',
+                  'user:id,name,avatar,role',
                   // relasi children() di model sudah rekursif, cukup panggil sekali
                   'children'
               ])

@@ -1,12 +1,24 @@
 // file: resources/js/Components/tab/DiscussionTab.tsx
 import { useState, useCallback } from "react";
 import { usePage, router, Link } from "@inertiajs/react";
+import { toast } from "react-toastify";
 import Button from "@/Components/ui/button/Button";
+import Badge from "@/Components/ui/badge/Badge";
 import EmptyState from "@/Components/empty/EmptyState";
 import RichTextEditor from "@/Components/form/RichTextEditor";
 import Label from "@/Components/form/Label";
 import Input from "@/Components/form/input/InputField";
 import { DiscussionTabProps } from "@/types/types";
+
+const RoleBadge = ({ role }: { role?: string }) => {
+  if (role === "admin") {
+    return <Badge color="error" size="sm" className="ml-2 uppercase text-[10px] px-1.5 py-0 rounded font-bold">Admin</Badge>;
+  }
+  if (role === "mentor") {
+    return <Badge color="info" size="sm" className="ml-2 uppercase text-[10px] px-1.5 py-0 rounded font-bold">Mentor</Badge>;
+  }
+  return null;
+};
 
 export default function DiscussionTab({ classData }: DiscussionTabProps) {
   const { props }: any = usePage();
@@ -55,6 +67,14 @@ export default function DiscussionTab({ classData }: DiscussionTabProps) {
         {
           onSuccess: () => {
             setCreating(false);
+            toast.success("Topik diskusi berhasil dibuat.");
+          },
+          onError: (errors: any) => {
+            if (errors.title) {
+              toast.error(errors.title);
+            } else if (errors.description) {
+              toast.error(errors.description);
+            }
           },
           onFinish: () => setLoading(false),
         }
@@ -154,11 +174,11 @@ export default function DiscussionTab({ classData }: DiscussionTabProps) {
                             >
                               {d.title}
                             </Link>
-                            <p className="text-xs text-gray-500 mt-1">
-                              oleh {authorName} •{" "}
-                              {new Date(
-                                d.created_at
-                              ).toLocaleDateString()}
+                            <p className="text-xs text-gray-500 mt-1 flex items-center">
+                              <span>oleh {authorName}</span>
+                              <RoleBadge role={d.opener_student?.role} />
+                              <span className="mx-1">•</span>
+                              <span>{new Date(d.created_at).toLocaleDateString()}</span>
                             </p>
                             <p
                               className="text-sm text-gray-600 mt-2 line-clamp-2"

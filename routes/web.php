@@ -123,7 +123,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/{discussion}', [DiscussionController::class, 'show'])->name('discussions.show');
             Route::patch('/{discussion}/status', [DiscussionController::class, 'updateStatus'])->name('discussions.updateStatus');
 
-            Route::middleware('role:student')->group(function () {
+            Route::middleware('role:student|mentor|admin')->group(function () {
                 Route::post('/', [DiscussionController::class, 'store'])->name('discussions.store');
                 Route::post('/{discussion}/replies', [DiscussionReplyController::class, 'store'])->name('discussions.discussionReplies.store');
             });

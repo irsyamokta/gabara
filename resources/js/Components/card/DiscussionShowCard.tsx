@@ -1,123 +1,19 @@
 // resources/js/Pages/Classes/DiscussionShow.tsx
 import React, { useState, useCallback, memo } from "react";
 import { useForm, usePage, router } from "@inertiajs/react";
+import { toast } from "react-toastify";
 import PageBreadcrumb from "@/Components/ui/breadcrumb/Breadcrumb";
 import Button from "@/Components/ui/button/Button";
 import RichTextEditor from "@/Components/form/RichTextEditor";
+import Badge from "@/Components/ui/badge/Badge";
 import { confirmDialog } from "@/utils/confirmationDialog";
 import { createMarkup } from "@/utils/htmlMarkup";
 import EmptyState from "@/Components/empty/EmptyState";
 import linkifyMentions from "@/utils/mentions";
+import ReplyItem from "./discussion/ReplyItem";
+import RoleBadge from "@/Components/ui/badge/RoleBadge";
 
-/**
- * ReplyItem: recursive component to render a reply and its children.
- * - uses local state for its own nested reply editor to avoid global re-renders
- * - calls onNestedSubmit(parentId, text) to actually send the nested reply
- */
-const ReplyItem = memo(function ReplyItem({
-  reply,
-  currentUser,
-  onNestedSubmit,
-  canReply,
-  level = 0,
-  usernames = [],
-}: {
-  reply: any;
-  currentUser: any;
-  onNestedSubmit: (parentId: string, text: string) => Promise<void>;
-  canReply: boolean;
-  level?: number;
-  usernames?: string[];
-}) {
-  const [openReply, setOpenReply] = useState(false);
-  const [value, setValue] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const authorName = reply.user?.name ?? reply.user_name ?? "Unknown";
-  const authorAvatar = reply.user?.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}`;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!value || value.trim() === "" || value === "<p><br></p>") {
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await onNestedSubmit(reply.id, value);
-      setValue("");
-      setOpenReply(false);
-      // parent will reload discussion so children will appear
-    }
-    finally {
-      setSubmitting(false);
-    }
-  };
-
-  const renderReplyHtml = (rawHtml: string | undefined) => {
-    const safe = rawHtml ?? "";
-    const withMentions = linkifyMentions(safe, usernames);
-    return { __html: withMentions };
-  };
-
-  return (
-
-    <div className="flex items-start gap-1">
-      <img src={authorAvatar} alt={authorName} className={`${level > 0 ? "w-7 h-7" : "w-9 h-9"} rounded-full object-cover border`} />
-      <div className="flex-1">
-        <p className="text-sm font-medium text-gray-800">{authorName}</p>
-        <p className="text-xs text-gray-500">{reply.posted_at ? new Date(reply.posted_at).toLocaleString() : ""}</p>
-
-        <div className="mt-2 text-sm text-gray-700" dangerouslySetInnerHTML={renderReplyHtml(reply.reply_text ?? "")} />
-
-        {canReply && (
-          <div className="mt-2">
-            <button
-              type="button"
-              className="text-xs text-blue-600"
-              onClick={() => {
-                setOpenReply((s) => !s);
-                // prefill mention
-                setValue((v) => (v ? v : `@${reply.user?.name ?? reply.user_name ?? ""} `));
-              }}
-            >
-              {openReply ? "Batal" : "Balas"}
-            </button>
-          </div>
-        )}
-
-        {openReply && (
-          <form onSubmit={handleSubmit} className="mt-2">
-            <RichTextEditor value={value} onChange={(v: string) => setValue(v)} />
-            <div className="flex gap-2 justify-end mt-2">
-              <Button variant="default" size="sm" type="submit" disabled={submitting}>
-                {submitting ? "Mengirim..." : "Kirim Balasan"}
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {/* children (recursively) */}
-        {reply.children && reply.children.length > 0 && (
-          <ul className="mt-3 pl-6 border-l space-y-2">
-            {reply.children.map((child: any) => (
-              <ReplyItem
-                key={child.id}
-                reply={child}
-                currentUser={currentUser}
-                onNestedSubmit={onNestedSubmit}
-                canReply={canReply}
-                level={level + 1}
-                usernames={usernames}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-});
-
-export default function DiscussionShow() {
+export default function DiscussionShowCard() {
   const { props }: any = usePage();
   const discussion = props?.discussion ?? null;
   const classData = props?.class ?? null;
@@ -142,8 +38,10 @@ export default function DiscussionShow() {
   const isMentorOrAdmin = user?.role === "mentor" || user?.role === "admin";
   const isOpen = discussion.status === "open";
 
-  // Extract all usernames from enrolled students and mentor
+  // Extract all usernames from enrolled students, mentor, and ALL repliers
   const usernames: string[] = [];
+
+  // 1. Enrolled students
   if (classData.enrollments) {
     classData.enrollments.forEach((enrollment: any) => {
       if (enrollment.student?.name) {
@@ -151,12 +49,36 @@ export default function DiscussionShow() {
       }
     });
   }
+
+  // 2. Class mentor
   if (classData.mentor?.name) {
-    usernames.push(classData.mentor.name);
+    if (!usernames.includes(classData.mentor.name)) {
+      usernames.push(classData.mentor.name);
+    }
   }
-  // Add discussion opener if not already included
-  if (discussion.opener_student?.name && !usernames.includes(discussion.opener_student.name)) {
-    usernames.push(discussion.opener_student.name);
+
+  // 3. Discussion opener
+  if (discussion.opener_student?.name) {
+    if (!usernames.includes(discussion.opener_student.name)) {
+      usernames.push(discussion.opener_student.name);
+    }
+  }
+
+  // 4. All repliers (recursive helper)
+  const collectRepliers = (replies: any[]) => {
+    replies.forEach((r) => {
+      const name = r.user?.name || r.user_name;
+      if (name && !usernames.includes(name)) {
+        usernames.push(name);
+      }
+      if (r.children && r.children.length > 0) {
+        collectRepliers(r.children);
+      }
+    });
+  };
+
+  if (discussion.discussion_replies) {
+    collectRepliers(discussion.discussion_replies);
   }
 
   // top-level reply
@@ -179,7 +101,10 @@ export default function DiscussionShow() {
             setData("reply_text", "");
             router.reload({ only: ["discussion"] });
           },
-          onError: () => {
+          onError: (errors: any) => {
+            if (errors.reply_text) {
+              toast.error(errors.reply_text);
+            }
           },
         }
       );
@@ -188,7 +113,7 @@ export default function DiscussionShow() {
   );
 
   // centralized nested submit handler used by ReplyItem
-  const onNestedSubmit = async (parentId: string, text: string) => {
+  const onNestedSubmit = async (parentId: any, text: string) => {
     return new Promise<void>((resolve, reject) => {
       router.post(
         route("discussions.discussionReplies.store", { class: classId, discussion: discussionId }),
@@ -199,7 +124,10 @@ export default function DiscussionShow() {
             router.reload({ only: ["discussion"] });
             resolve();
           },
-          onError: () => {
+          onError: (errors: any) => {
+            if (errors.reply_text) {
+              toast.error(errors.reply_text);
+            }
             reject(new Error("failed"));
           },
         }
@@ -233,10 +161,13 @@ export default function DiscussionShow() {
 
             <div className="flex flex-col">
               <h1 className="text-xl md:text-2xl font-bold leading-snug break-words">{discussion.title}</h1>
-              <p className="text-sm text-gray-500">
-                oleh <span className="font-medium">{discussion.opener_student?.name ?? "Unknown"}</span> •{" "}
-                {discussion.created_at ? new Date(discussion.created_at).toLocaleString() : ""}
-              </p>
+              <div className="flex items-center text-sm text-gray-500 mt-1">
+                <span>oleh</span>
+                <span className="font-medium mx-1 text-gray-800">{discussion.opener_student?.name ?? "Unknown"}</span>
+                <RoleBadge role={discussion.opener_student?.role} />
+                <span className="mx-1">•</span>
+                <span>{discussion.created_at ? new Date(discussion.created_at).toLocaleString() : ""}</span>
+              </div>
             </div>
           </div>
 

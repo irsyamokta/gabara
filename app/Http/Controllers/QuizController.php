@@ -23,28 +23,13 @@ class QuizController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
-
-        if ($user->role === 'admin') {
-            // Admin dapat melihat semua kuis
-            $quizzes = Quiz::with('class:id,name')
-                ->withCount('questions')
-                ->orderByDesc('created_at')
-                ->get();
-            // Admin dapat melihat semua kelas untuk dropdown modal
-            $classes = ClassModel::select('id', 'name')->get();
-        } else {
-            // Mentor hanya melihat kuis miliknya
-            $quizzes = Quiz::whereHas('class.mentor', function ($query) use ($user) {
-                $query->where('id', $user->id);
-            })
-                ->with('class:id,name')
-                ->withCount('questions')
-                ->orderByDesc('created_at')
-                ->get();
-            // Mentor hanya melihat kelas miliknya
-            $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
-        }
+        // Admin dan Mentor dapat melihat semua kuis dan kelas (Fitur Kolaborasi)
+        $quizzes = Quiz::with('class:id,name')
+            ->withCount('questions')
+            ->orderByDesc('created_at')
+            ->get();
+            
+        $classes = ClassModel::select('id', 'name')->get();
 
         return Inertia::render('Quizzes/Quiz', [
             'quizzes' => $quizzes,
@@ -57,14 +42,8 @@ class QuizController extends Controller
      */
     public function create()
     {
-        $user = Auth::user();
-        if ($user->role === 'admin') {
-            // Admin dapat melihat semua kelas
-            $classes = ClassModel::select('id', 'name')->get();
-        } else {
-            // Mentor hanya melihat kelas miliknya
-            $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
-        }
+        // Admin dan Mentor dapat melihat semua kelas
+        $classes = ClassModel::select('id', 'name')->get();
 
         return Inertia::render('Quizzes/QuizBuilder', [
             'classes' => $classes,
@@ -79,17 +58,12 @@ class QuizController extends Controller
     {
         $user = Auth::user();
 
-        // Validasi, pastikan class_id yang dipilih adalah milik mentor atau admin dapat memilih semua
+        // Validasi, pastikan class_id yang dipilih valid
         $classRule = [
             'required',
             'uuid',
             Rule::exists('classes', 'id'),
         ];
-        if ($user->role !== 'admin') {
-            $classRule[] = Rule::exists('classes', 'id')->where(function ($query) use ($user) {
-                $query->where('mentor_id', $user->id);
-            });
-        }
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -221,11 +195,8 @@ class QuizController extends Controller
             $quizData['time_close'] = '00:00';
         }
 
-        if ($user->role === 'admin') {
-            $classes = ClassModel::select('id', 'name')->get();
-        } else {
-            $classes = ClassModel::where('mentor_id', $user->id)->select('id', 'name')->get();
-        }
+        // Admin dan Mentor dapat melihat semua kelas
+        $classes = ClassModel::select('id', 'name')->get();
 
         return Inertia::render('Quizzes/QuizBuilder', [
             'quiz' => $quizData,
@@ -243,17 +214,12 @@ class QuizController extends Controller
             $this->authorizeMentorAction($quiz); // Keamanan
         }
 
-        // Validasi, pastikan class_id yang dipilih adalah milik mentor atau admin dapat memilih semua
+        // Validasi, pastikan class_id yang dipilih valid
         $classRule = [
             'required',
             'uuid',
             Rule::exists('classes', 'id'),
         ];
-        if ($user->role !== 'admin') {
-            $classRule[] = Rule::exists('classes', 'id')->where(function ($query) use ($user) {
-                $query->where('mentor_id', $user->id);
-            });
-        }
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -487,11 +453,8 @@ class QuizController extends Controller
      */
     private function authorizeMentorAction(Quiz $quiz)
     {
-        $user = Auth::user();
-        // Cek apakah mentor_id di kelas yang berelasi dengan kuis ini
-        // sama dengan id user yang sedang login.
-        if ($quiz->class->mentor_id !== $user->id) {
-            abort(403, 'Anda tidak memiliki akses ke kuis ini.');
-        }
+        // Fitur Kolaborasi: Mentor diizinkan mengelola kuis lintas kelas.
+        // Pengecekan (mentor_id !== user->id) dinonaktifkan.
+        return true;
     }
 }

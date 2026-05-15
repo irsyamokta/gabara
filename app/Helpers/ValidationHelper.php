@@ -261,7 +261,6 @@ class ValidationHelper
                 'assignments.*.date_close.date' => 'Tanggal ditutup harus berupa tanggal yang valid.',
                 'assignments.*.date_close.after_or_equal' => 'Tanggal ditutup harus sama atau setelah tanggal dibuka.',
                 'assignments.*.time_close.required' => 'Waktu ditutup wajib diisi.',
-                'assignments.*.time_close.after' => 'Waktu ditutup harus setelah waktu dibuka.',
                 'assignments.*.file_link.url' => 'Link file pendukung harus berupa URL yang valid.',
             ]
         );

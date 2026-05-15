@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import { useForm, usePage, router } from "@inertiajs/react";
 import { Modal } from "@/Components/ui/modal";
-import Input from "@/Components/form/input/InputField";
-import Select from "@/Components/form/Select";
-import RichTextEditor from "@/Components/form/RichTextEditor";
-import Label from "@/Components/form/Label";
 import Button from "@/Components/ui/button/Button";
-
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
-import { MdContentCopy } from "react-icons/md";
-import { FiRefreshCw } from "react-icons/fi";
+
+import EnrollmentSection from "./class/EnrollmentSection";
+import ClassFieldsSection from "./class/ClassFieldsSection";
 
 interface ClassForm {
     thumbnail: File | null;
@@ -65,7 +61,7 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                 },
                 () => {
                     setCopied(false);
-                }
+                },
             );
         }
     };
@@ -119,21 +115,25 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
         setLoading(true);
 
         if (role === "student") {
-            router.post(route("enrollments.store"), { enrollment_code: data.enrollment_code }, {
-                onSuccess: () => {
-                    reset();
-                    onClose();
+            router.post(
+                route("enrollments.store"),
+                { enrollment_code: data.enrollment_code },
+                {
+                    onSuccess: (page: any) => {
+                        if (page.props.flash?.error) return;
+                        reset();
+                        onClose();
+                    },
+                    onError: (errors) => {
+                        setServerErrors(errors);
+                    },
+                    onFinish: () => setLoading(false),
                 },
-                onError: (errors) => {
-                    setServerErrors(errors);
-                },
-                onFinish: () => setLoading(false),
-            });
+            );
             return;
         }
 
         const formData = new FormData();
-
         Object.entries(data).forEach(([key, value]) => {
             if (key === "thumbnail" && value instanceof File) {
                 formData.append(key, value);
@@ -148,7 +148,8 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
             formData.append("_method", "PATCH");
             router.post(route("classes.update", classData.id), formData, {
                 forceFormData: true,
-                onSuccess: () => {
+                onSuccess: (page: any) => {
+                    if (page.props.flash?.error) return;
                     reset();
                     setImageFile(null);
                     setImagePreview(null);
@@ -162,7 +163,8 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
         } else {
             router.post(route("classes.store"), formData, {
                 forceFormData: true,
-                onSuccess: () => {
+                onSuccess: (page: any) => {
+                    if (page.props.flash?.error) return;
                     reset();
                     setImageFile(null);
                     setImagePreview(null);
@@ -177,160 +179,51 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-[330px] 2xsm:max-w-[350px] md:max-w-[700px] m-4">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            className="max-w-[330px] 2xsm:max-w-[350px] md:max-w-[700px] m-4"
+        >
             <div className="no-scrollbar relative w-full max-w-[700px] max-h-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
                 <h4 className="text-2xl font-semibold mb-4">
-                    {role === "student" ? "Bergabung ke Kelas" : classData ? "Edit Kelas" : "Tambah Kelas"}
+                    {role === "student"
+                        ? "Bergabung ke Kelas"
+                        : classData
+                          ? "Edit Kelas"
+                          : "Tambah Kelas"}
                 </h4>
 
                 <form
                     className="flex flex-col gap-4"
                     onSubmit={handleSubmit}
                     onKeyDown={(e) => {
-                        if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+                        if (
+                            e.key === "Enter" &&
+                            (e.target as HTMLElement).tagName !== "TEXTAREA"
+                        ) {
                             e.preventDefault();
                         }
                     }}
                 >
                     {role === "student" ? (
-                        <div>
-                            <Label required={true}>Kode Enrollment</Label>
-                            <Input
-                                value={data.enrollment_code}
-                                onChange={(e) => setData("enrollment_code", e.target.value)}
-                                placeholder="Masukkan kode kelas"
-                            />
-                            {serverErrors.enrollment_code && (
-                                <p className="text-xs text-red-500 mt-1">{serverErrors.enrollment_code}</p>
-                            )}
-                        </div>
+                        <EnrollmentSection
+                            value={data.enrollment_code}
+                            onChange={(v) => setData("enrollment_code", v)}
+                            error={serverErrors.enrollment_code}
+                        />
                     ) : (
-                        <>
-                            {/* Thumbnail */}
-                            <div>
-                                <Label required={false}>Thumbnail</Label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    className="file:mr-4 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary/80"
-                                />
-                                {imagePreview && (
-                                    <img
-                                        src={imagePreview}
-                                        alt="Thumbnail Preview"
-                                        className="mt-2 h-24 w-24 object-cover rounded"
-                                    />
-                                )}
-                                {serverErrors.thumbnail && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.thumbnail}</p>
-                                )}
-                            </div>
-
-                            {/* Name */}
-                            <div>
-                                <Label required={true}>Nama Kelas</Label>
-                                <Input
-                                    value={data.name}
-                                    onChange={(e) => setData("name", e.target.value)}
-                                    placeholder="Masukkan nama kelas"
-                                    required
-                                />
-                                {serverErrors.name && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.name}</p>
-                                )}
-                            </div>
-
-                            {/* Description */}
-                            <div>
-                                <Label required={true}>Deskripsi</Label>
-                                <RichTextEditor
-                                    value={data.description ?? ""}
-                                    onChange={(v: string) => setData("description", v ?? "")}
-                                />
-                                {serverErrors.description && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.description}</p>
-                                )}
-                            </div>
-
-                            {/* Enrollment Code */}
-                            <div>
-                                <Label required={true}>Kode Enrollment</Label>
-                                <div className="flex items-center gap-2">
-                                    <div className="relative flex-1">
-                                        <Input
-                                            value={data.enrollment_code}
-                                            onChange={(e) => setData("enrollment_code", e.target.value)}
-                                            placeholder="Masukkan kode kelas"
-                                            className="pr-10"
-                                            readOnly
-                                        />
-                                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                                            <button
-                                                type="button"
-                                                onClick={copyToClipboard}
-                                                className="relative text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                                            >
-                                                <MdContentCopy className="h-5 w-5" />
-                                                {copied && (
-                                                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-800 px-2 py-1 text-xs text-white shadow">
-                                                        Disalin!
-                                                    </span>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={generateEnrollmentCode}
-                                        className="whitespace-nowrap border border-gray-300 px-3.5 py-3.5 rounded-md"
-                                    >
-                                        <FiRefreshCw />
-                                    </button>
-                                </div>
-                                {serverErrors.enrollment_code && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.enrollment_code}</p>
-                                )}
-                            </div>
-
-                            {/* Academic Year */}
-                            <div>
-                                <Label required={true}>Tahun Akademik</Label>
-                                <Select
-                                    value={data.academic_year_tag}
-                                    onChange={(value) => setData("academic_year_tag", value)}
-                                    options={[
-                                        { value: "2025/2026", label: "2025/2026" },
-                                        { value: "2026/2027", label: "2026/2027" },
-                                        { value: "2027/2028", label: "2027/2028" },
-                                        { value: "2028/2029", label: "2028/2029" },
-                                        { value: "2029/2030", label: "2029/2030" },
-                                    ]}
-                                />
-                                {serverErrors.academic_year_tag && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.academic_year_tag}</p>
-                                )}
-                            </div>
-
-                            {/* Visibility */}
-                            <div>
-                                <Label required={true}>Visibilitas</Label>
-                                <Select
-                                    value={data.visibility ? "1" : "0"}
-                                    onChange={(value) => setData("visibility", value === "1")}
-                                    options={[
-                                        { value: "1", label: "Publik" },
-                                        { value: "0", label: "Privat" },
-                                    ]}
-                                />
-                                {serverErrors.visibility && (
-                                    <p className="text-xs text-red-500 mt-1">{serverErrors.visibility}</p>
-                                )}
-                            </div>
-                        </>
+                        <ClassFieldsSection
+                            data={data}
+                            setData={setData}
+                            serverErrors={serverErrors}
+                            imagePreview={imagePreview}
+                            handleImageChange={handleImageChange}
+                            generateEnrollmentCode={generateEnrollmentCode}
+                            copyToClipboard={copyToClipboard}
+                            copied={copied}
+                        />
                     )}
 
-                    {/* Button */}
                     <div className="flex justify-end gap-3 mt-6">
                         <Button
                             type="button"
@@ -340,13 +233,21 @@ export const ModalClass = ({ isOpen, onClose, classData }: ModalClassProps) => {
                         >
                             Batal
                         </Button>
-                        <Button type="submit" variant="default" disabled={loading}>
+                        <Button
+                            type="submit"
+                            variant="default"
+                            disabled={loading}
+                        >
                             {loading ? (
                                 <>
                                     <AiOutlineLoading3Quarters className="animate-spin mr-2" />
                                     Memproses...
                                 </>
-                            ) : role === "student" ? "Bergabung" : "Simpan"}
+                            ) : role === "student" ? (
+                                "Bergabung"
+                            ) : (
+                                "Simpan"
+                            )}
                         </Button>
                     </div>
                 </form>

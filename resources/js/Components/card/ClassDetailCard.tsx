@@ -8,14 +8,15 @@ import ParticipantsTab from "@/Components/tab/ParticipantsTab";
 import DiscussionTab from "@/Components/tab/DiscussionTab";
 import GradesTab from "@/Components/tab/GradesTab";
 import PageBreadcrumb from "@/Components/ui/breadcrumb/Breadcrumb";
-
 import { ClassDetailPageProps } from "@/types/types";
 
-export default function ClassDetailCard() {
-    const { props } = usePage<ClassDetailPageProps>();
-    const { class: classData, userRole } = props;
+import RoleBadge from "@/Components/ui/badge/RoleBadge";
 
-    const [activeTab, setActiveTab] = useState("Kursus");
+export default function ClassDetailCard() {
+    const { props } = usePage<ClassDetailPageProps & { activeTab?: string }>();
+    const { class: classData, userRole, activeTab: initialTab } = props;
+
+    const [activeTab, setActiveTab] = useState(initialTab || "Kursus");
 
     const tabs = ["Kursus", "Peserta", "Diskusi", "Nilai"];
 
@@ -52,7 +53,10 @@ export default function ClassDetailCard() {
                             <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-white drop-shadow-md">{classData.name}</h1>
                             <Badge color="warning">{classData.academic_year_tag}</Badge>
                         </div>
-                        <p className="text-sm md:text-base text-white drop-shadow-md mt-1">{classData.mentor?.name}</p>
+                        <div className="flex items-center mt-1">
+                            <p className="text-sm md:text-base text-white drop-shadow-md">{classData.mentor?.name}</p>
+                            <RoleBadge role={classData.mentor?.role} />
+                        </div>
                     </div>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/40 to-transparent rounded-b-lg" />
